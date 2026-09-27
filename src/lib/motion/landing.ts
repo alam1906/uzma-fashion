@@ -1,0 +1,334 @@
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollSmoother } from 'gsap/ScrollSmoother';
+import { goto } from '$app/navigation';
+
+export function createLandingMotion(root: HTMLElement): () => void {
+  gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
+
+  const media = gsap.matchMedia();
+  let smoother: ScrollSmoother | undefined;
+  let navigatingAnchor = false;
+  const context = gsap.context(() => {
+    ScrollTrigger.saveStyles(root.querySelectorAll('.collection-card, .offer-panel'));
+    // Smoother must exist before any triggers, and remain off for reduced motion.
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      smoother = ScrollSmoother.create({
+        wrapper: root.querySelector<HTMLElement>('#smooth-wrapper')!,
+        content: root.querySelector<HTMLElement>('#smooth-content')!,
+        smooth: 1,
+        smoothTouch: 0.1,
+        // Re-measure full-viewport pins when a mobile browser changes its visible height.
+        ignoreMobileResize: false,
+        onFocusIn: () => (navigatingAnchor ? false : undefined)
+      });
+      return () => {
+        smoother?.kill();
+        smoother = undefined;
+      };
+    });
+
+    media.add(
+      '(prefers-reduced-motion: no-preference)',
+      () => {
+        const hero = root.querySelector<HTMLElement>('.hero')!;
+        const stage = root.querySelector<HTMLElement>('.hero-stage')!;
+        const frame = root.querySelector<HTMLElement>('.hero-visual')!;
+        const initialFrame = (property: string) =>
+          getComputedStyle(stage).getPropertyValue(`--hero-frame-${property}`).trim();
+
+        // Let Welcome enter over the pinned frame during its final viewport of travel.
+        gsap.set('.page-foreground', { marginTop: '-100dvh' });
+        gsap.set('.hero-reveal-copy', { display: 'block', autoAlpha: 0, y: 30 });
+        gsap.set(frame, { xPercent: -50, x: 0 });
+
+        const heroTimeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: hero,
+            pin: stage,
+            start: 'top top',
+            end: () => `+=${stage.offsetHeight * 2.15}`,
+            scrub: true,
+            refreshPriority: 1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true
+          }
+        });
+
+        heroTimeline
+          .to('.hero-title', { opacity: 0, ease: 'none', duration: 0.6 }, 0)
+          .to('.hero-visual-caption', { opacity: 0, duration: 0.18 }, 0)
+          .fromTo(
+            frame,
+            {
+              width: () => initialFrame('width'),
+              height: () => initialFrame('height'),
+              top: () => initialFrame('top')
+            },
+            { width: '100%', height: '100%', top: 0, ease: 'power1.inOut', duration: 1 },
+            0
+          )
+          .to('.hero-visual > img', { objectPosition: '50% 16%', ease: 'none', duration: 1 }, 0)
+          .to('.hero-shade', { backgroundColor: 'rgba(0, 19, 28, 0.26)', duration: 0.4 }, 0.45)
+          .to('.hero-reveal-copy', { autoAlpha: 1, y: 0, ease: 'power2.out', duration: 0.4 }, 0.58)
+          // Expansion takes 1.15 viewports; hold still for the covering transition.
+          .to({}, { duration: 1 / 1.15 });
+      },
+      root
+    );
+
+    media.add(
+      {
+        motion: '(prefers-reduced-motion: no-preference)',
+        desktop: '(min-width: 769px) and (hover: hover) and (pointer: fine)'
+      },
+      (match) => {
+        if (!match.conditions?.motion) return;
+        const section = root.querySelector<HTMLElement>('.collection-section')!;
+        const showcase = root.querySelector<HTMLElement>('.collection-showcase')!;
+        const cards = gsap.utils.toArray<HTMLElement>('.collection-card', showcase);
+        const offerStage = root.querySelector<HTMLElement>('.offer-stage')!;
+        const panels = gsap.utils.toArray<HTMLElement>('.offer-panel', offerStage);
+        section.classList.add('is-animated');
+        showcase.classList.add('is-animated');
+        offerStage.classList.add('is-animated');
+
+        const stackOffset = match.conditions.desktop ? 14 : 11;
+        const activeCardY = (cards.length - 1) * stackOffset;
+        const hiddenCardY = () => window.innerHeight;
+        const collectionTimeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: showcase,
+            start: 'top top',
+            end: () => `+=${window.innerHeight * cards.length}`,
+            pin: true,
+            scrub: 0.7,
+            anticipatePin: 1,
+            invalidateOnRefresh: true
+          }
+        });
+        // Initial states share the timeline so refresh and reduced-motion cleanup stay in sync.
+        collectionTimeline
+          .set(cards, { zIndex: (index) => index + 1, scale: 1, transformOrigin: '50% 0%' }, 0)
+          .set(cards[0], { y: activeCardY }, 0)
+          .set(cards.slice(1), { y: hiddenCardY }, 0)
+          .addLabel('collection-01', 0);
+        cards.slice(1).forEach((card, cardIndex) => {
+          const index = cardIndex + 1;
+          const transitionStart = index - 0.45;
+          collectionTimeline
+            .to(
+              cards.slice(0, index),
+              {
+                y: (previousIndex) => activeCardY - (index - previousIndex) * stackOffset,
+                scale: (previousIndex) => 1 - (index - previousIndex) * 0.05,
+                duration: 0.55,
+                ease: 'power3.out'
+              },
+              transitionStart
+            )
+            .to(
+              card,
+              {
+                y: activeCardY,
+                scale: 1,
+                duration: 0.55,
+                ease: 'power3.out'
+              },
+              transitionStart
+            )
+            .addLabel(`collection-0${index + 1}`, index);
+        });
+        collectionTimeline.to({}, { duration: 1 });
+
+        gsap
+          .timeline({
+            scrollTrigger: {
+              trigger: offerStage,
+              start: 'top top',
+              end: () => `+=${offerStage.offsetHeight * 2.3}`,
+              pin: true,
+              scrub: true,
+              anticipatePin: 1,
+              invalidateOnRefresh: true
+            }
+          })
+          .set(panels, { zIndex: (index) => index + 1 }, 0)
+          .set(panels[1], { xPercent: 100 }, 0)
+          .set(panels[2], { xPercent: -100 }, 0)
+          .to(panels[1], { xPercent: 0, duration: 1, ease: 'none' })
+          .to(panels[2], { xPercent: 0, duration: 1, ease: 'none' })
+          .to({}, { duration: 0.3 });
+
+        const navigateCollection = (event: KeyboardEvent) => {
+          if (
+            !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)
+          )
+            return;
+          const trigger = collectionTimeline.scrollTrigger!;
+          const current = collectionTimeline.time();
+          const next =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? cards.length - 1
+                : Math.round(current) + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1);
+          const index = gsap.utils.clamp(0, cards.length - 1, next);
+          const top =
+            trigger.start + ((trigger.end - trigger.start) * index) / collectionTimeline.duration();
+          event.preventDefault();
+          if (smoother) smoother.scrollTo(top, true);
+          else window.scrollTo({ top, behavior: 'smooth' });
+        };
+        showcase.addEventListener('keydown', navigateCollection);
+        return () => {
+          showcase.removeEventListener('keydown', navigateCollection);
+          section.classList.remove('is-animated');
+          showcase.classList.remove('is-animated');
+          offerStage.classList.remove('is-animated');
+        };
+      },
+      root
+    );
+
+    media.add(
+      '(prefers-reduced-motion: no-preference)',
+      () => {
+        const revealElements = root.querySelectorAll<HTMLElement>('[data-reveal]');
+        revealElements.forEach((element) => {
+          gsap.from(element, {
+            y: 32,
+            autoAlpha: 0,
+            duration: 1,
+            ease: 'power2.out',
+            scrollTrigger: { trigger: element, start: 'top 94%', once: true }
+          });
+        });
+
+        root.querySelectorAll<HTMLElement>('[data-image-reveal]').forEach((element) => {
+          gsap.from(element, {
+            clipPath: 'inset(8% 0% 8% 0%)',
+            y: 24,
+            duration: 1.3,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: element, start: 'top 92%', once: true }
+          });
+        });
+
+        gsap.from('[data-story-word]', {
+          opacity: 0.2,
+          stagger: 0.15,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '.story-heading',
+            start: 'top 85%',
+            end: 'bottom 43%',
+            scrub: 0.7
+          }
+        });
+
+        gsap.to('.story-parallax', {
+          yPercent: -12,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '.story-store',
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 1
+          }
+        });
+
+        gsap.from('.hero-visual', { opacity: 0, y: 30, duration: 1.5, ease: 'power3.out' });
+        gsap.from('.hero-title > span', { y: 45, opacity: 0, duration: 1.6, ease: 'power3.out' });
+      },
+      root
+    );
+
+    // Create after the hero pin so the transition follows the completed expansion.
+    media.add(
+      '(prefers-reduced-motion: no-preference)',
+      () => {
+        const story = root.querySelector<HTMLElement>('.story')!;
+        const desktop = () =>
+          window.matchMedia('(min-width: 900px) and (min-height: 650px)').matches;
+
+        const transition = gsap.timeline({
+          scrollTrigger: {
+            trigger: story,
+            start: 'top bottom',
+            end: 'top top',
+            scrub: 0.6,
+            invalidateOnRefresh: true
+          }
+        });
+
+        // Only the incoming heading drifts; the expanded hero stays pinned.
+        transition.fromTo(
+          '.statement',
+          { y: () => window.innerHeight * (desktop() ? 0.08 : 0.03) },
+          { y: 0, ease: 'none', duration: 1 },
+          0
+        );
+      },
+      root
+    );
+  }, root);
+
+  const focusTargets = new Set<HTMLElement>();
+  const navigateAnchor = async (event: MouseEvent) => {
+    if (
+      !smoother ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
+    if (!link || link.hasAttribute('download')) return;
+    const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+    if (!target || !root.contains(target)) return;
+    event.preventDefault();
+    if (location.hash !== link.hash) await goto(link.hash, { shallow: true, reset: false });
+    if (disposed || !smoother) return;
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+      focusTargets.add(target);
+    }
+    navigatingAnchor = true;
+    target.focus({ preventScroll: true });
+    navigatingAnchor = false;
+    smoother.scrollTo(target, true, 'top top');
+  };
+  root.addEventListener('click', navigateAnchor);
+
+  const restoreHash = () => {
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target && root.contains(target)) smoother?.scrollTo(target, false, 'top top');
+  };
+  window.addEventListener('hashchange', restoreHash);
+
+  // Dimensions are reserved in CSS. Refresh once after decoding the hero image.
+  let disposed = false;
+  const heroImage = root.querySelector<HTMLImageElement>('.hero-visual > img');
+  void heroImage
+    ?.decode()
+    .catch(() => undefined)
+    .then(() => {
+      if (!disposed) {
+        ScrollTrigger.refresh();
+        restoreHash();
+      }
+    });
+
+  return () => {
+    disposed = true;
+    root.removeEventListener('click', navigateAnchor);
+    window.removeEventListener('hashchange', restoreHash);
+    focusTargets.forEach((target) => target.removeAttribute('tabindex'));
+    media.revert();
+    context.revert();
+  };
+}

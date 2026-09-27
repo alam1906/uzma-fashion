@@ -1,0 +1,16 @@
+{
+  "extends": "$app/tsconfig",
+  "include": ["src", "*.ts", "tests"],
+  "exclude": ["node_modules", "build", "test-results", "playwright-report"],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    "types": ["node", "$app/types"]
+  }
+}

@@ -1,0 +1,75 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Dokploy deployment
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
+        run: |
+          if [[ -z "$DOKPLOY_URL$DOKPLOY_API_KEY$DOKPLOY_APPLICATION_ID" ]]; then
+            echo "::notice::Dokploy is not configured yet. The image was published to GHCR."
+            exit 0
+          fi
+
+          for secret_name in DOKPLOY_URL DOKPLOY_API_KEY DOKPLOY_APPLICATION_ID; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "::error::Missing repository secret: $secret_name"
+              exit 1
+            fi
+          done
+
+          curl --fail-with-body --show-error --silent \
+            --connect-timeout 10 --max-time 60 \
+            --request POST "${DOKPLOY_URL%/}/api/application.deploy" \
+            --header 'accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --header "x-api-key: $DOKPLOY_API_KEY" \
+            --data "$(jq -nc --arg id "$DOKPLOY_APPLICATION_ID" '{applicationId:$id}')"
