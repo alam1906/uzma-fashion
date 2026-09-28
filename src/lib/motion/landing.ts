@@ -1,10 +1,18 @@
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
+import { SplitText } from 'gsap/SplitText';
 import { goto } from '$app/navigation';
 
+function createImageSlideReveal(frame: HTMLElement, duration = 1): gsap.core.Timeline {
+  return gsap
+    .timeline({ defaults: { duration, ease: 'none' } })
+    .fromTo(frame, { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)' }, 0)
+    .fromTo(frame.querySelector('img'), { xPercent: 6, scale: 1.12 }, { xPercent: 0, scale: 1 }, 0);
+}
+
 export function createLandingMotion(root: HTMLElement): () => void {
-  gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
+  gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
 
   const media = gsap.matchMedia();
   let smoother: ScrollSmoother | undefined;
@@ -87,8 +95,14 @@ export function createLandingMotion(root: HTMLElement): () => void {
         const section = root.querySelector<HTMLElement>('.collection-section')!;
         const showcase = root.querySelector<HTMLElement>('.collection-showcase')!;
         const cards = gsap.utils.toArray<HTMLElement>('.collection-card', showcase);
+        const collectionImages = cards.map((card) =>
+          card.querySelector<HTMLElement>('.collection-image')!
+        );
         const offerStage = root.querySelector<HTMLElement>('.offer-stage')!;
         const panels = gsap.utils.toArray<HTMLElement>('.offer-panel', offerStage);
+        const offerImages = panels.map((panel) =>
+          panel.querySelector<HTMLElement>('.offer-visual')!
+        );
         section.classList.add('is-animated');
         showcase.classList.add('is-animated');
         offerStage.classList.add('is-animated');
@@ -137,6 +151,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
               },
               transitionStart
             )
+            .add(createImageSlideReveal(collectionImages[index], 0.35), transitionStart + 0.1)
             .addLabel(`collection-0${index + 1}`, index);
         });
         collectionTimeline.to({}, { duration: 1 });
@@ -158,7 +173,27 @@ export function createLandingMotion(root: HTMLElement): () => void {
           .set(panels[2], { xPercent: -100 }, 0)
           .to(panels[1], { xPercent: 0, duration: 1, ease: 'none' })
           .to(panels[2], { xPercent: 0, duration: 1, ease: 'none' })
-          .to({}, { duration: 0.3 });
+          .to({}, { duration: 0.3 })
+          .add(createImageSlideReveal(offerImages[1], 0.75), 0.25)
+          .add(createImageSlideReveal(offerImages[2], 0.75), 1.25);
+
+        // First images enter vertically; later images follow their pinned parent timeline.
+        // Keep each reveal under one scroll controller so it also reverses naturally.
+        [
+          { trigger: showcase, image: collectionImages[0] },
+          { trigger: offerStage, image: offerImages[0] }
+        ].forEach(({ trigger, image }) => {
+          gsap
+            .timeline({
+              scrollTrigger: {
+                trigger,
+                start: 'top 90%',
+                end: 'top 15%',
+                scrub: true
+              }
+            })
+            .add(createImageSlideReveal(image));
+        });
 
         const navigateCollection = (event: KeyboardEvent) => {
           if (
@@ -205,15 +240,40 @@ export function createLandingMotion(root: HTMLElement): () => void {
           });
         });
 
-        root.querySelectorAll<HTMLElement>('[data-image-reveal]').forEach((element) => {
-          gsap.from(element, {
-            clipPath: 'inset(8% 0% 8% 0%)',
-            y: 24,
-            duration: 1.3,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: element, start: 'top 92%', once: true }
+        root.querySelectorAll<HTMLElement>('[data-story-text]').forEach((paragraph) => {
+          SplitText.create(paragraph, {
+            type: 'lines',
+            mask: 'lines',
+            linesClass: 'story-line',
+            autoSplit: true,
+            aria: 'auto',
+            // Returning the tween preserves progress when responsive text reflows.
+            onSplit: (split) =>
+              gsap.from(split.lines, {
+                yPercent: 110,
+                opacity: 0,
+                duration: 0.9,
+                stagger: 0.1,
+                ease: 'power3.out',
+                scrollTrigger: { trigger: paragraph, start: 'top 88%', once: true }
+              })
           });
         });
+
+        const storyImage = root.querySelector<HTMLElement>('[data-story-image]')!;
+        gsap
+          .timeline({
+            defaults: { duration: 1.35, ease: 'power3.inOut' },
+            scrollTrigger: { trigger: storyImage, start: 'top 88%', once: true }
+          })
+          .fromTo(
+            storyImage,
+            { clipPath: 'inset(0% 100% 0% 0%)' },
+            { clipPath: 'inset(0% 0% 0% 0%)' },
+            0
+          )
+          // Slide the window so the image's own parallax transform remains independent.
+          .from(storyImage.querySelector('.image-window'), { x: 48 }, 0);
 
         gsap.from('[data-story-word]', {
           opacity: 0.2,
