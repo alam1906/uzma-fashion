@@ -79,6 +79,9 @@ test('content, images, countdown, and footer work in the production build', asyn
   await page.goto('/');
   await settle(page);
   await expect(page).toHaveTitle(/Uzma Fashion/);
+  await expect(page.locator('.brand-logo img')).toBeVisible();
+  await expect(page.locator('.header-invitation')).toHaveAttribute('href', '#opening');
+  await expect(page.locator('.header-invitation')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Grand Opening/);
   await expect(page.locator('.collection-card')).toHaveCount(4);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
@@ -304,6 +307,8 @@ test('mobile navigation, card stack, and countdown remain usable', async ({ page
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await settle(page);
+  await expect(page.locator('.brand-logo img')).toBeVisible();
+  await expect(page.locator('.header-invitation')).toBeHidden();
   await page.screenshot({ path: 'test-results/mobile-hero.png' });
   await page.getByRole('button', { name: 'Buka menu' }).click();
   await expect(page.getByRole('button', { name: 'Tutup menu' })).toHaveAttribute(
@@ -341,6 +346,198 @@ test('mobile navigation, card stack, and countdown remain usable', async ({ page
   );
   expect(units[0].y).toEqual(units[1].y);
   expect(units[2].y).toBeGreaterThan(units[0].y);
+});
+
+test('mobile navigation links also work with touch input', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  await settle(page);
+  await page.getByRole('button', { name: 'Buka menu' }).tap();
+  await page
+    .getByRole('navigation', { name: 'Navigasi ponsel' })
+    .getByRole('link', { name: /^Koleksi/ })
+    .tap();
+  await expect(page).toHaveURL(/#collection$/);
+  await expect(page.getByRole('button', { name: 'Buka menu' })).toHaveAttribute(
+    'aria-expanded',
+    'false'
+  );
+  await context.close();
+});
+
+test('mobile offer panels cover the viewport while pinned and after viewport resize', async ({
+  browser
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 852 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  await settle(page);
+  await jumpPinned(page, '.offer-stage', 0.7 / 2.3);
+
+  for (const height of [852, 740, 852]) {
+    await page.setViewportSize({ width: 393, height });
+    await page.waitForTimeout(600);
+    const coverage = await page.locator('.offer-stage').evaluate((stage) => {
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const bounds = stage.getBoundingClientRect();
+      const covers = (y: number) =>
+        Boolean(document.elementFromPoint(window.innerWidth / 2, y)?.closest('.offer-panel'));
+      return {
+        viewportHeight,
+        top: bounds.top,
+        height: bounds.height,
+        topCovered: covers(1),
+        bottomCovered: covers(viewportHeight - 2)
+      };
+    });
+    expect(Math.abs(coverage.top)).toBeLessThan(2);
+    expect(Math.abs(coverage.height - coverage.viewportHeight)).toBeLessThan(2);
+    expect(coverage.topCovered).toBe(true);
+    expect(coverage.bottomCovered).toBe(true);
+  }
+  await context.close();
+});
+
+test('mobile hero and collection fill the viewport through pinning and viewport resize', async ({
+  browser
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 852 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  await settle(page);
+
+  for (const [stage, progress] of [
+    ['.hero-stage', 0.6],
+    ['.collection-showcase', 0.5]
+  ] as const) {
+    await jumpPinned(page, stage, progress);
+    for (const height of [852, 740, 852]) {
+      await page.setViewportSize({ width: 393, height });
+      await page.waitForTimeout(600);
+      const coverage = await page.locator(stage).evaluate((element, selector) => {
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const bounds = element.getBoundingClientRect();
+        const painted = (y: number) =>
+          Boolean(
+            document
+              .elementFromPoint(window.innerWidth / 2, y)
+              ?.closest(selector === '.hero-stage' ? '.hero-stage,.page-foreground' : selector)
+          );
+        return {
+          viewportHeight,
+          top: bounds.top,
+          height: bounds.height,
+          topPainted: painted(1),
+          bottomPainted: painted(viewportHeight - 2)
+        };
+      }, stage);
+      expect(Math.abs(coverage.top)).toBeLessThan(2);
+      expect(Math.abs(coverage.height - coverage.viewportHeight)).toBeLessThan(2);
+      expect(coverage.topPainted, `${stage} ${height}px top`).toBe(true);
+      expect(
+        coverage.bottomPainted,
+        `${stage} ${height}px bottom: ${JSON.stringify(coverage)}`
+      ).toBe(true);
+    }
+  }
+  await context.close();
+});
+
+test('mobile collection keeps the card stack and its text inside short viewports', async ({
+  browser
+}) => {
+  test.setTimeout(60000);
+  for (const { width, height } of [
+    { width: 270, height: 573 },
+    { width: 320, height: 640 },
+    { width: 390, height: 740 }
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width, height },
+      isMobile: true,
+      hasTouch: true
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await settle(page);
+
+    await page.locator('#collection').evaluate((section) => {
+      window.scrollTo(0, window.scrollY + section.getBoundingClientRect().top);
+    });
+    await page.waitForTimeout(1200);
+    const headingSpacing = await page.locator('#collection').evaluate((section) => {
+      const title = section.querySelector('.collection-heading h2')!.getBoundingClientRect();
+      const firstCard = section.querySelector('.collection-card')!.getBoundingClientRect();
+      return {
+        above: title.top - section.getBoundingClientRect().top,
+        below: firstCard.top - title.bottom
+      };
+    });
+    expect(
+      Math.abs(headingSpacing.above - headingSpacing.below),
+      `${width}×${height}: equal space around collection title`
+    ).toBeLessThan(3);
+
+    await page.locator('.collection-showcase').evaluate((stage) => {
+      window.scrollTo(0, window.scrollY + stage.getBoundingClientRect().top - 100);
+    });
+    await page.waitForTimeout(1200);
+    const firstHeading = await page.locator('.collection-card h3').first().boundingBox();
+    expect(
+      firstHeading!.y + firstHeading!.height,
+      `${width}×${height}: first card heading`
+    ).toBeLessThan(height);
+
+    for (const [index, progress] of [0, 0.25, 0.5, 0.75].entries()) {
+      await jumpPinned(page, '.collection-showcase', progress);
+      const current = page.locator('.collection-card').nth(index);
+      const card = await current.boundingBox();
+      const heading = await current.locator('h3').boundingBox();
+      const description = await current.locator('.collection-description').boundingBox();
+      const image = await current.locator('.collection-image').boundingBox();
+      expect(card!.y, `${width}×${height}: card ${index + 1} top`).toBeGreaterThan(70);
+      expect(
+        card!.y + card!.height,
+        `${width}×${height}: card ${index + 1} bottom`
+      ).toBeLessThanOrEqual(height - 12);
+      expect(card!.x, `${width}×${height}: card ${index + 1} left`).toBeGreaterThanOrEqual(20);
+      expect(
+        card!.x + card!.width,
+        `${width}×${height}: card ${index + 1} right`
+      ).toBeLessThanOrEqual(width - 20);
+      expect(image!.height).toBeGreaterThan(120);
+      expect(heading!.y + heading!.height).toBeLessThan(height);
+      expect(description!.y + description!.height).toBeLessThan(height - 8);
+      if (width === 270 && index === 3) {
+        expect(heading!.height, 'Quiet Radiance wraps to two lines').toBeGreaterThan(45);
+      }
+      if (index > 0) {
+        const previous = await page
+          .locator('.collection-card')
+          .nth(index - 1)
+          .boundingBox();
+        expect(card!.y - previous!.y, `${width}×${height}: visible stacked edge`).toBeGreaterThan(
+          5
+        );
+      }
+    }
+    await context.close();
+  }
 });
 
 test('reduced motion skips pinning and responds when the preference changes', async ({ page }) => {

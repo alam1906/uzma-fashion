@@ -28,7 +28,10 @@ export function createLandingMotion(root: HTMLElement): () => void {
         smoothTouch: 0.1,
         // Re-measure full-viewport pins when a mobile browser changes its visible height.
         ignoreMobileResize: false,
-        onFocusIn: () => (navigatingAnchor ? false : undefined)
+        onFocusIn: (_smoother, event) =>
+          navigatingAnchor || (event.target as Element).closest('#mobile-navigation')
+            ? false
+            : undefined
       });
       return () => {
         smoother?.kill();
@@ -88,7 +91,8 @@ export function createLandingMotion(root: HTMLElement): () => void {
     media.add(
       {
         motion: '(prefers-reduced-motion: no-preference)',
-        desktop: '(min-width: 769px) and (hover: hover) and (pointer: fine)'
+        desktop: '(min-width: 769px) and (hover: hover) and (pointer: fine)',
+        mobile: '(max-width: 47.99rem)'
       },
       (match) => {
         if (!match.conditions?.motion) return;
@@ -107,7 +111,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
         showcase.classList.add('is-animated');
         offerStage.classList.add('is-animated');
 
-        const stackOffset = match.conditions.desktop ? 14 : 11;
+        const stackOffset = match.conditions.mobile ? 8 : match.conditions.desktop ? 14 : 11;
         const activeCardY = (cards.length - 1) * stackOffset;
         const hiddenCardY = () => window.innerHeight;
         const collectionTimeline = gsap.timeline({

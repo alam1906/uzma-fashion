@@ -6,13 +6,18 @@
     expanded = false;
     if (restoreFocus) menuButton?.focus({ preventScroll: true });
   }
+
+  function keepLinkInPlace(event: MouseEvent) {
+    // Prevent pointer focus from shifting ScrollSmoother's wrapper before click.
+    event.preventDefault();
+  }
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && expanded && closeMenu(true)} />
 
 <header class="site-header" id="top">
-  <a href="#top" aria-label="Uzma Fashion, kembali ke awal" class="wordmark">
-    uzma<span class="brand-dot">.</span><span class="wordmark-sub">FASHION</span>
+  <a href="#top" aria-label="Uzma Fashion, kembali ke awal" class="brand-logo">
+    <img src="/logo-uzma-transparent.png" alt="" width="1737" height="905" />
   </a>
   <nav class="desktop-nav" aria-label="Navigasi utama">
     <a href="#about">Tentang</a>
@@ -39,10 +44,10 @@
     aria-label="Navigasi ponsel"
     inert={!expanded}
   >
-    <a href="#about" onclick={() => closeMenu()}>Tentang</a>
-    <a href="#collection" onclick={() => closeMenu()}>Koleksi</a>
-    <a href="#privileges" onclick={() => closeMenu()}>Promo</a>
-    <a href="#opening" onclick={() => closeMenu()}>Grand Opening</a>
+    <a href="#about" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Tentang</a>
+    <a href="#collection" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Koleksi</a>
+    <a href="#privileges" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Promo</a>
+    <a href="#opening" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Grand Opening</a>
     <p class="mt-8 text-xs">25 Oktober 2026 · 10.00 WIB</p>
   </nav>
 </header>
