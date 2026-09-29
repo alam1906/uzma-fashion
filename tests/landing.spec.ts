@@ -408,6 +408,58 @@ test('mobile offer panels cover the viewport while pinned and after viewport res
   await context.close();
 });
 
+test('mobile footer stays at the end during scrolling and browser-height changes', async ({
+  browser
+}) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 740 },
+    isMobile: true,
+    hasTouch: true
+  });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await settle(page);
+
+  for (const [stage, progress] of [
+    ['.hero-stage', 1.15 / 2.15],
+    ['.collection-showcase', 0.5],
+    ['.offer-stage', 0.7 / 2.3],
+    ['.hero-stage', 0.3]
+  ] as const) {
+    await jumpPinned(page, stage, progress);
+    for (const height of [852, 790, 740]) {
+      await page.setViewportSize({ width: 393, height });
+      // Check immediately as well as after the resize has settled; a fixed
+      // footer behind the whole page can leak through during either state.
+      await expect(page.locator('.footer-copyright')).not.toBeInViewport();
+      await expect(page.locator('.footer-coming')).not.toBeInViewport();
+      await page.waitForTimeout(400);
+      await page.evaluate(() => window.scrollBy(0, 16));
+      await page.waitForTimeout(250);
+      await expect(page.locator('.footer-copyright')).not.toBeInViewport();
+      await expect(page.locator('.footer-coming')).not.toBeInViewport();
+    }
+  }
+
+  // The reveal still works at the actual bottom of the page, then disappears
+  // again when returning to the hero (including with reduced motion).
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page.locator('.footer-copyright')).toBeInViewport();
+  await expect(page.locator('.footer-coming')).toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('.footer-copyright')).not.toBeInViewport();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(page.locator('.footer-copyright')).not.toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page.locator('.footer-copyright')).toBeInViewport();
+  expect(errors).toEqual([]);
+  await context.close();
+});
+
 test('mobile hero and collection fill the viewport through pinning and viewport resize', async ({
   browser
 }) => {

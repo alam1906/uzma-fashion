@@ -29,6 +29,12 @@
 #smooth-wrapper {
   position: relative;
   z-index: 1;
+  background: var(--color-paper);
+}
+
+#smooth-wrapper.is-smooth {
+  /* Only the viewing window resizes with the browser toolbar, not the pins. */
+  height: 100dvh !important;
 }
 .opening-surface,
 .hero {
@@ -201,7 +207,7 @@
 
 .collection-showcase.is-animated {
   display: grid;
-  min-height: 100svh;
+  min-height: var(--scene-height);
   align-items: start;
   overflow: hidden;
   padding-top: calc(var(--site-header-height) + var(--collection-header-gap));
@@ -210,7 +216,7 @@
 .collection-showcase.is-animated .collection-stack {
   position: relative;
   width: min(100%, 72rem);
-  height: calc(100svh - var(--site-header-height) - var(--collection-header-gap));
+  height: calc(var(--scene-height) - var(--site-header-height) - var(--collection-header-gap));
   overflow: hidden;
   border-radius: clamp(1rem, 1.5vw, 1.5rem);
   filter: drop-shadow(0 1.8rem 3rem rgb(0 0 0 / 0.26));
@@ -229,18 +235,17 @@
   max-height: none;
 }
 
-.footer-spacer {
-  height: 100svh;
-  pointer-events: none;
+.footer-reveal {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .sticky-footer {
-  position: fixed;
-  z-index: 0;
-  inset: auto 0 0;
+  position: relative;
   display: grid;
   width: 100%;
-  min-height: 100svh;
+  min-height: var(--scene-height);
   place-items: center;
   overflow: hidden;
   padding: 2rem var(--page-gutter);
@@ -325,8 +330,8 @@
 }
 
 .offer-stage.is-animated {
-  height: 100svh;
-  min-height: 100svh;
+  height: var(--scene-height) !important;
+  min-height: var(--scene-height);
   overflow: hidden;
 }
 
@@ -493,7 +498,7 @@
 
 @media (max-width: 47.99rem) {
   .collection-section {
-    --collection-stage-top: clamp(4.5rem, 15dvh, 7rem);
+    --collection-stage-top: clamp(4.5rem, 15svh, 7rem);
     --collection-stack-depth: 24px;
     padding-inline: 0;
   }
@@ -503,9 +508,10 @@
   }
 
   .collection-showcase.is-animated {
-    height: 100dvh !important;
-    min-height: 100dvh;
-    padding: var(--collection-stage-top) clamp(1.25rem, 8vw, 1.5rem) clamp(1rem, 5dvh, 2rem);
+    height: var(--scene-height) !important;
+    min-height: var(--scene-height);
+    padding: var(--collection-stage-top) clamp(1.25rem, 8vw, 1.5rem)
+      calc(clamp(1rem, 5svh, 2rem) + var(--scene-toolbar-space));
   }
 
   .collection-showcase.is-animated .collection-stack {
@@ -513,15 +519,6 @@
     height: 100%;
     overflow: visible;
     border-radius: 0;
-  }
-
-  .offer-panel {
-    min-height: 100dvh;
-  }
-
-  .offer-stage.is-animated {
-    height: 100dvh !important;
-    min-height: 100dvh;
   }
 
   .countdown-section {
@@ -594,9 +591,9 @@
   .collection-showcase.is-animated .collection-card {
     height: calc(100% - var(--collection-stack-depth));
     min-height: 0;
-    grid-template-rows: minmax(0, min(37dvh, calc(100% - 12rem))) auto;
+    grid-template-rows: minmax(0, min(37svh, calc(100% - 12rem))) auto;
     align-content: start;
-    gap: clamp(0.7rem, 3.2dvh, 1.2rem);
+    gap: clamp(0.7rem, 3.2svh, 1.2rem);
     padding: 0.7rem;
     border-radius: 0.7rem;
   }
@@ -610,6 +607,10 @@
 
   .offer-panel {
     padding: 2.5rem 1.25rem 3rem;
+  }
+
+  .offer-stage.is-animated .offer-panel {
+    padding-bottom: calc(3rem + var(--scene-toolbar-space));
   }
 
   .offer-panel-inner {

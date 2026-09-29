@@ -21,21 +21,51 @@ export function createLandingMotion(root: HTMLElement): () => void {
     ScrollTrigger.saveStyles(root.querySelectorAll('.collection-card, .offer-panel'));
     // Smoother must exist before any triggers, and remain off for reduced motion.
     media.add('(prefers-reduced-motion: no-preference)', () => {
+      const wrapper = root.querySelector<HTMLElement>('#smooth-wrapper')!;
       smoother = ScrollSmoother.create({
-        wrapper: root.querySelector<HTMLElement>('#smooth-wrapper')!,
+        wrapper,
         content: root.querySelector<HTMLElement>('#smooth-content')!,
         smooth: 1,
         smoothTouch: 0.1,
-        // Re-measure full-viewport pins when a mobile browser changes its visible height.
-        ignoreMobileResize: false,
+        // The scenes use a stable large viewport. Toolbar-only changes must
+        // not rebuild their pin spacers in the middle of a touch gesture.
+        ignoreMobileResize: true,
         onFocusIn: (_smoother, event) =>
           navigatingAnchor || (event.target as Element).closest('#mobile-navigation')
             ? false
             : undefined
       });
+      wrapper.classList.add('is-smooth');
+
+      // Unlike browser chrome, rotation/window resizing changes the stable
+      // scene dimensions. Refresh all pins together after those changes.
+      // Measure outside the pinned elements: GSAP temporarily constrains their
+      // max-width/max-height, which can hide a subsequent viewport expansion.
+      const viewportProbe = document.createElement('div');
+      viewportProbe.setAttribute('aria-hidden', 'true');
+      viewportProbe.style.cssText =
+        'position:fixed;inset:0 auto auto 0;width:100%;height:var(--scene-height);visibility:hidden;pointer-events:none;contain:strict;';
+      root.append(viewportProbe);
+      let sceneWidth = viewportProbe.offsetWidth;
+      let sceneHeight = viewportProbe.offsetHeight;
+      const refreshScenes = gsap.delayedCall(0.2, () => ScrollTrigger.refresh()).pause();
+      const sceneResize = new ResizeObserver(() => {
+        const width = viewportProbe.offsetWidth;
+        const height = viewportProbe.offsetHeight;
+        if (width === sceneWidth && height === sceneHeight) return;
+        sceneWidth = width;
+        sceneHeight = height;
+        refreshScenes.restart(true);
+      });
+      sceneResize.observe(viewportProbe);
+
       return () => {
+        sceneResize.disconnect();
+        refreshScenes.kill();
+        viewportProbe.remove();
         smoother?.kill();
         smoother = undefined;
+        wrapper.classList.remove('is-smooth');
       };
     });
 
@@ -49,7 +79,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
           getComputedStyle(stage).getPropertyValue(`--hero-frame-${property}`).trim();
 
         // Let Welcome enter over the pinned frame during its final viewport of travel.
-        gsap.set('.page-foreground', { marginTop: '-100dvh' });
+        gsap.set('.page-foreground', { marginTop: 'calc(0px - var(--scene-height))' });
         gsap.set('.hero-reveal-copy', { display: 'block', autoAlpha: 0, y: 30 });
         gsap.set(frame, { xPercent: -50, x: 0 });
 
@@ -113,12 +143,12 @@ export function createLandingMotion(root: HTMLElement): () => void {
 
         const stackOffset = match.conditions.mobile ? 8 : match.conditions.desktop ? 14 : 11;
         const activeCardY = (cards.length - 1) * stackOffset;
-        const hiddenCardY = () => window.innerHeight;
+        const hiddenCardY = () => showcase.offsetHeight;
         const collectionTimeline = gsap.timeline({
           scrollTrigger: {
             trigger: showcase,
             start: 'top top',
-            end: () => `+=${window.innerHeight * cards.length}`,
+            end: () => `+=${showcase.offsetHeight * cards.length}`,
             pin: true,
             scrub: 0.7,
             anticipatePin: 1,
@@ -332,6 +362,24 @@ export function createLandingMotion(root: HTMLElement): () => void {
           { y: () => window.innerHeight * (desktop() ? 0.08 : 0.03) },
           { y: 0, ease: 'none', duration: 1 },
           0
+        );
+
+        // Preserve the footer uncover effect, but clip it to its own place at
+        // the end of the document so it cannot bleed behind the hero or offers.
+        gsap.fromTo(
+          '.sticky-footer',
+          { yPercent: -100 },
+          {
+            yPercent: 0,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: '.footer-reveal',
+              start: 'top bottom',
+              end: 'bottom bottom',
+              scrub: true,
+              invalidateOnRefresh: true
+            }
+          }
         );
       },
       root

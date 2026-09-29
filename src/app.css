@@ -115,6 +115,12 @@
   background: var(--color-paper);
 }
 
+.site-shell {
+  /* Pin geometry stays stable while mobile browser controls expand/collapse. */
+  --scene-height: 100lvh;
+  --scene-toolbar-space: calc(100lvh - 100svh);
+}
+
 @layer components {
   .section-pad-x {
     @apply px-6 md:px-12 xl:px-20;
@@ -391,7 +397,7 @@
   }
   .story-heading {
     min-height: 0;
-    padding-block: clamp(2.25rem, 5dvh, 2.75rem);
+    padding-block: clamp(2.25rem, 5svh, 2.75rem);
   }
   .story-store .image-window {
     height: 62svh;
@@ -528,7 +534,7 @@
   .hero-reveal-placement {
     width: 86%;
     top: auto;
-    bottom: 8%;
+    bottom: calc(8svh + var(--scene-toolbar-space));
     transform: none;
   }
   .hero-reveal-title {
@@ -548,11 +554,11 @@
 @media (max-width: 899px) and (max-height: 500px) and (orientation: landscape) {
   .hero-reveal-placement {
     top: auto;
-    bottom: 8%;
+    bottom: calc(8svh + var(--scene-toolbar-space));
     transform: none;
   }
   .hero-reveal-title {
-    font-size: clamp(48px, 15dvh, 70px);
+    font-size: clamp(48px, 15svh, 70px);
     margin-top: 12px;
   }
   .hero-reveal-date {
@@ -563,15 +569,9 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .hero-stage {
-    height: 100dvh;
+    height: var(--scene-height) !important;
     min-height: 0;
     max-height: none;
-  }
-}
-
-@media (max-width: 899px) and (prefers-reduced-motion: no-preference) {
-  .hero-stage {
-    height: 100dvh !important;
   }
 }
 

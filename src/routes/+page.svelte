@@ -60,8 +60,9 @@
           <Invitation />
         </div>
       </main>
-      <div class="footer-spacer" aria-hidden="true"></div>
+      <div class="footer-reveal">
+        <Footer />
+      </div>
     </div>
   </div>
-  <Footer />
 </div>
