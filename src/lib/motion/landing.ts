@@ -13,29 +13,34 @@ function createImageSlideReveal(frame: HTMLElement, duration = 1): gsap.core.Tim
 
 export function createLandingMotion(root: HTMLElement): () => void {
   gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
+  ScrollTrigger.config({ ignoreMobileResize: true });
 
   const media = gsap.matchMedia();
   let smoother: ScrollSmoother | undefined;
+  let updateFooter: (() => void) | undefined;
   let navigatingAnchor = false;
   const context = gsap.context(() => {
     ScrollTrigger.saveStyles(root.querySelectorAll('.collection-card, .offer-panel'));
     // Smoother must exist before any triggers, and remain off for reduced motion.
     media.add('(prefers-reduced-motion: no-preference)', () => {
       const wrapper = root.querySelector<HTMLElement>('#smooth-wrapper')!;
-      smoother = ScrollSmoother.create({
-        wrapper,
-        content: root.querySelector<HTMLElement>('#smooth-content')!,
-        smooth: 1,
-        smoothTouch: 0.1,
-        // The scenes use a stable large viewport. Toolbar-only changes must
-        // not rebuild their pin spacers in the middle of a touch gesture.
-        ignoreMobileResize: true,
-        onFocusIn: (_smoother, event) =>
-          navigatingAnchor || (event.target as Element).closest('#mobile-navigation')
-            ? false
-            : undefined
-      });
-      wrapper.classList.add('is-smooth');
+      // Keep touch scrolling in normal document flow. A fixed/transformed
+      // scrolling surface can expose gaps while mobile browser chrome moves.
+      // All section timelines below still run with native touch scrolling.
+      if (ScrollTrigger.isTouch !== 1) {
+        smoother = ScrollSmoother.create({
+          wrapper,
+          content: root.querySelector<HTMLElement>('#smooth-content')!,
+          smooth: 1,
+          ignoreMobileResize: true,
+          onUpdate: () => updateFooter?.(),
+          onFocusIn: (_smoother, event) =>
+            navigatingAnchor || (event.target as Element).closest('#mobile-navigation')
+              ? false
+              : undefined
+        });
+        wrapper.classList.add('is-smooth');
+      }
 
       // Unlike browser chrome, rotation/window resizing changes the stable
       // scene dimensions. Refresh all pins together after those changes.
@@ -364,23 +369,48 @@ export function createLandingMotion(root: HTMLElement): () => void {
           0
         );
 
-        // Preserve the footer uncover effect, but clip it to its own place at
-        // the end of the document so it cannot bleed behind the hero or offers.
-        gsap.fromTo(
-          '.sticky-footer',
+        // Browser controls change the visible bottom without changing lvh or
+        // document geometry. Derive the reveal from live bounds instead of a
+        // cached ScrollTrigger end so the footer never slides above its end.
+        const footerContainer = root.querySelector<HTMLElement>('.footer-reveal')!;
+        const footer = footerContainer.querySelector<HTMLElement>('.sticky-footer')!;
+        const footerReveal = gsap.fromTo(
+          footer,
           { yPercent: -100 },
-          {
-            yPercent: 0,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: '.footer-reveal',
-              start: 'top bottom',
-              end: 'bottom bottom',
-              scrub: true,
-              invalidateOnRefresh: true
-            }
-          }
+          { yPercent: 0, ease: 'none', paused: true, duration: 1 }
         );
+        let footerFrame = 0;
+        const queueFooterUpdate = () => {
+          if (footerFrame) return;
+          footerFrame = requestAnimationFrame(() => {
+            footerFrame = 0;
+            const bounds = footerContainer.getBoundingClientRect();
+            const viewport = window.visualViewport;
+            const visibleBottom = viewport
+              ? viewport.offsetTop + viewport.height
+              : window.innerHeight;
+            footerReveal.progress(
+              gsap.utils.clamp(0, 1, (visibleBottom - bounds.top) / bounds.height)
+            );
+          });
+        };
+        updateFooter = queueFooterUpdate;
+        window.addEventListener('scroll', queueFooterUpdate, { passive: true });
+        window.addEventListener('resize', queueFooterUpdate);
+        window.visualViewport?.addEventListener('resize', queueFooterUpdate);
+        window.visualViewport?.addEventListener('scroll', queueFooterUpdate);
+        ScrollTrigger.addEventListener('refresh', queueFooterUpdate);
+        queueFooterUpdate();
+
+        return () => {
+          updateFooter = undefined;
+          cancelAnimationFrame(footerFrame);
+          window.removeEventListener('scroll', queueFooterUpdate);
+          window.removeEventListener('resize', queueFooterUpdate);
+          window.visualViewport?.removeEventListener('resize', queueFooterUpdate);
+          window.visualViewport?.removeEventListener('scroll', queueFooterUpdate);
+          ScrollTrigger.removeEventListener('refresh', queueFooterUpdate);
+        };
       },
       root
     );
@@ -389,7 +419,6 @@ export function createLandingMotion(root: HTMLElement): () => void {
   const focusTargets = new Set<HTMLElement>();
   const navigateAnchor = async (event: MouseEvent) => {
     if (
-      !smoother ||
       event.defaultPrevented ||
       event.button !== 0 ||
       event.metaKey ||
@@ -404,7 +433,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
     if (!target || !root.contains(target)) return;
     event.preventDefault();
     if (location.hash !== link.hash) await goto(link.hash, { shallow: true, reset: false });
-    if (disposed || !smoother) return;
+    if (disposed) return;
     if (!target.hasAttribute('tabindex')) {
       target.setAttribute('tabindex', '-1');
       focusTargets.add(target);
@@ -412,13 +441,27 @@ export function createLandingMotion(root: HTMLElement): () => void {
     navigatingAnchor = true;
     target.focus({ preventScroll: true });
     navigatingAnchor = false;
-    smoother.scrollTo(target, true, 'top top');
+    if (smoother) smoother.scrollTo(target, true, 'top top');
+    else
+      window.scrollTo({
+        top: window.scrollY + target.getBoundingClientRect().top,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth'
+      });
   };
   root.addEventListener('click', navigateAnchor);
 
   const restoreHash = () => {
     const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    if (target && root.contains(target)) smoother?.scrollTo(target, false, 'top top');
+    if (target && root.contains(target)) {
+      if (smoother) smoother.scrollTo(target, false, 'top top');
+      else
+        window.scrollTo({
+          top: window.scrollY + target.getBoundingClientRect().top,
+          behavior: 'instant'
+        });
+    }
   };
   window.addEventListener('hashchange', restoreHash);
 

@@ -48,12 +48,12 @@ Alamat, peta, kontak, serta akun sosial belum tersedia di website sumber, sehing
 
 Animasi utama di `src/lib/motion/landing.ts`:
 
-- Scroll halaman memakai [ScrollSmoother](https://gsap.com/docs/v3/Plugins/ScrollSmoother/), dengan smoothing lebih ringan pada perangkat sentuh.
-- Pembuka desktop dan mobile: foto portrait membesar sampai memenuhi viewport, lalu tetap dipin saat section Welcome naik menutupinya. Foto awal dan teks menyesuaikan layar kecil; ukuran animasi dihitung ulang saat viewport berubah. Pinning menjaga posisi hero di dalam konten ScrollSmoother yang ditransformasi.
+- Desktop memakai [ScrollSmoother](https://gsap.com/docs/v3/Plugins/ScrollSmoother/). Perangkat sentuh memakai scroll native agar konten tetap berada dalam alur dokumen saat bilah browser muncul/hilang; seluruh animasi GSAP tetap aktif.
+- Pembuka desktop dan mobile: foto portrait membesar sampai memenuhi viewport, lalu tetap dipin saat section Welcome naik menutupinya. Ukuran pin memakai viewport besar yang stabil (`lvh`); perhitungan ulang dilakukan saat ukuran layout berubah, seperti rotasi layar, bukan hanya saat bilah browser berubah.
 - Cerita: teks muncul mengikuti scroll dan foto bergerak dengan parallax ringan.
 - Koleksi: empat kartu bertumpuk, dengan teks di kiri dan gambar di kanan pada desktop. Susunan, warna, ukuran, dan tipografi mengikuti website referensi. Tombol panah, Home, dan End dapat digunakan ketika area koleksi difokuskan.
 - Promo: tiga panel bergantian dari kanan lalu kiri sesuai referensi, diikuti ketentuan promo dan countdown berkotak.
-- Footer: “Coming Soon” pada latar rose, terbuka dari balik section countdown. Footer tetap berada di luar konten ScrollSmoother agar posisinya fixed terhadap viewport.
+- Footer: “Coming Soon” pada latar rose, terbuka dari balik section countdown dan tetap dibatasi dalam area terakhir dokumen. Reveal mengikuti batas `visualViewport` aktual saat scroll/resize sehingga tidak menyisakan celah ketika bilah browser berubah.
 - Reduced motion menonaktifkan smoothing, pinning, dan animasi nonesensial. Konten dirender secara statis dan tetap terbaca tanpa JavaScript.
 
 Lifecycle memakai [`gsap.context()`](<https://gsap.com/docs/v3/GSAP/gsap.context()/>) dan [`gsap.matchMedia()`](<https://gsap.com/docs/v3/GSAP/gsap.matchMedia()/>); semua animasi, pin, listener, dan timer dibersihkan saat komponen dilepas atau kondisi media berubah. [Referensi ScrollTrigger](https://gsap.com/docs/v3/Plugins/ScrollTrigger/).

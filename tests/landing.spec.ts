@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 
 async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready);
@@ -21,6 +21,20 @@ async function jumpPinned(page: Page, selector: string, progress: number) {
     window.scrollTo(0, start + distance * progress);
   }, progress);
   await page.waitForTimeout(2200);
+}
+
+async function preserveMobileLayoutViewport(page: Page) {
+  // Real browser controls resize the visible viewport while svh/lvh remain
+  // unchanged. A plain setViewportSize changes all three and misses this bug.
+  const styles = await page.evaluate(() =>
+    Array.from(document.styleSheets)
+      .flatMap((sheet) => Array.from(sheet.cssRules, (rule) => rule.cssText))
+      .join('\n')
+      .replace(/([\d.]+)lvh\b/g, (_, value) => `${Number(value) * 8.52}px`)
+      .replace(/([\d.]+)svh\b/g, (_, value) => `${Number(value) * 7.4}px`)
+  );
+  await page.addStyleTag({ content: styles });
+  await page.waitForTimeout(600);
 }
 
 test('reference card stack and alternating offer panels follow scroll', async ({ page }) => {
@@ -456,6 +470,76 @@ test('mobile footer stays at the end during scrolling and browser-height changes
   await expect(page.locator('.footer-copyright')).not.toBeInViewport();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(page.locator('.footer-copyright')).toBeInViewport();
+  expect(errors).toEqual([]);
+  await context.close();
+});
+
+test('mobile browser controls leave no blank strip in pinned sections or below the footer', async ({
+  browser
+}) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 740 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: devices['Pixel 7'].userAgent
+  });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await settle(page);
+  await preserveMobileLayoutViewport(page);
+
+  for (const [selector, progress] of [
+    ['.hero-stage', 1.15 / 2.15],
+    ['.collection-showcase', 0.5],
+    ['.offer-stage', 0.7 / 2.3]
+  ] as const) {
+    await jumpPinned(page, selector, progress);
+    for (const height of [740, 852, 790, 740]) {
+      await page.setViewportSize({ width: 393, height });
+      await page.waitForTimeout(100);
+      const coverage = await page.locator(selector).evaluate((stage) => {
+        const bounds = stage.getBoundingClientRect();
+        const viewport = window.visualViewport!;
+        return { top: bounds.top, bottom: bounds.bottom, visibleBottom: viewport.height };
+      });
+      expect(Math.abs(coverage.top), `${selector}: pinned top at ${height}px`).toBeLessThan(2);
+      expect(coverage.bottom, `${selector}: covers the visible bottom`).toBeGreaterThanOrEqual(
+        coverage.visibleBottom - 1
+      );
+      await expect(page.locator('.footer-copyright')).not.toBeInViewport();
+    }
+  }
+
+  for (const height of [740, 852, 790, 740, 852]) {
+    await page.setViewportSize({ width: 393, height });
+    await page.evaluate(async () => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    const bottom = await page.evaluate(() => {
+      const container = document.querySelector('.footer-reveal')!.getBoundingClientRect();
+      const footer = document.querySelector('.sticky-footer')!.getBoundingClientRect();
+      const content = document.querySelector('#smooth-content')!.getBoundingClientRect();
+      return {
+        viewport: window.visualViewport!.height,
+        container: container.bottom,
+        footer: footer.bottom,
+        content: content.bottom
+      };
+    });
+    for (const edge of ['container', 'footer', 'content'] as const) {
+      expect(
+        Math.abs(bottom[edge] - bottom.viewport),
+        `${edge}: no gap at ${height}px`
+      ).toBeLessThan(2);
+    }
+    await expect(page.locator('.footer-copyright')).toBeInViewport();
+  }
+  await page.screenshot({ path: 'test-results/mobile-footer-browser-controls.png' });
   expect(errors).toEqual([]);
   await context.close();
 });
