@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { event } from '#lib/data/event.js';
+
   let expanded = $state(false);
   let menuButton: HTMLButtonElement;
 
@@ -48,6 +50,6 @@
     <a href="#collection" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Koleksi</a>
     <a href="#privileges" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Promo</a>
     <a href="#opening" onmousedown={keepLinkInPlace} onclick={() => closeMenu()}>Grand Opening</a>
-    <p class="mt-8 text-xs">25 Oktober 2026 · 10.00 WIB</p>
+    <p class="mt-8 text-xs">{event.date} · {event.time}</p>
   </nav>
 </header>

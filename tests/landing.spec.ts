@@ -37,6 +37,178 @@ async function preserveMobileLayoutViewport(page: Page) {
   await page.waitForTimeout(600);
 }
 
+for (const device of [
+  { name: 'desktop', width: 1366, height: 650, touch: false },
+  { name: 'mobile', width: 393, height: 852, touch: true }
+]) {
+  test(`Welcome image and text remain concealed until their reveal at ${device.name}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch
+    });
+    let page = await context.newPage();
+    await page.goto('/');
+    await settle(page);
+
+    const expectConcealed = async () => {
+      const images = page.locator('[data-story-image], .collection-image, .offer-visual');
+      for (const image of await images.all()) {
+        await expect(image).toHaveCSS('clip-path', 'inset(0% 100% 0% 0%)');
+      }
+      const lines = page.locator('[data-story-text] .story-line');
+      expect(await lines.count()).toBeGreaterThan(0);
+      for (const line of await lines.all()) await expect(line).toHaveCSS('opacity', '0');
+    };
+    await expectConcealed();
+    // A refresh/re-split before entry must not restore the visible source styles.
+    await page.setViewportSize({ width: device.width - 12, height: device.height });
+    await page.waitForTimeout(800);
+    await expectConcealed();
+
+    const reveal = async (selector: string, image: boolean) => {
+      // Each once-only reveal needs a fresh visit; the image entrance can
+      // legitimately also start the adjacent paragraph on desktop.
+      if (!image) {
+        await page.close();
+        page = await context.newPage();
+        await page.goto('/');
+        await settle(page);
+      }
+      await page.locator(selector).evaluate((element) => {
+        window.scrollTo(
+          0,
+          window.scrollY + element.getBoundingClientRect().top - innerHeight * 0.94
+        );
+      });
+      await page.waitForTimeout(1200);
+      if (image) {
+        await expect(page.locator(selector)).toHaveCSS('clip-path', 'inset(0% 100% 0% 0%)');
+      } else {
+        for (const line of await page.locator(`${selector} .story-line`).all()) {
+          await expect(line).toHaveCSS('opacity', '0');
+        }
+      }
+
+      const frames = await page.evaluate(
+        async ({ selector, image }) => {
+          const target = document.querySelector(selector)!;
+          const sample = () => {
+            if (image) {
+              const percentages = getComputedStyle(target).clipPath.match(/[\d.]+(?=%)/g)!;
+              return 1 - Number(percentages[1] ?? percentages[0]) / 100;
+            }
+            const lines = Array.from(target.querySelectorAll('.story-line'));
+            return (
+              lines.reduce((sum, line) => sum + Number(getComputedStyle(line).opacity), 0) /
+              lines.length
+            );
+          };
+          const frames = [sample()];
+          window.scrollTo(
+            0,
+            window.scrollY + target.getBoundingClientRect().top - innerHeight * 0.68
+          );
+          const started = performance.now();
+          while (performance.now() - started < 2200) {
+            await new Promise(requestAnimationFrame);
+            frames.push(sample());
+          }
+          return frames;
+        },
+        { selector, image }
+      );
+      expect(frames[0], `${selector}: concealed before entry`).toBe(0);
+      expect(
+        frames.some((value) => value > 0.01 && value < 0.99),
+        `${selector}: slide in progress`
+      ).toBe(true);
+      expect(frames.at(-1), `${selector}: fully revealed`).toBeCloseTo(1, 3);
+      for (let index = 1; index < frames.length; index++) {
+        expect(
+          frames[index],
+          `${selector}: never flash visible then disappear`
+        ).toBeGreaterThanOrEqual(frames[index - 1] - 0.001);
+      }
+    };
+
+    await reveal('[data-story-image]', true);
+    await reveal('.story-lead', false);
+    await reveal('.story-body', false);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('[data-story-image]')).toHaveCSS('clip-path', 'none');
+    await expect(page.locator('.story-lead')).toHaveCSS('opacity', '1');
+    await expect(page.locator('.story-line')).toHaveCount(0);
+    await context.close();
+  });
+
+  test(`UZMA remains behind the opaque hero image during entrance and scroll at ${device.name}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch
+    });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      const frames: { opacity: number; ordered: boolean; imageOnTop: boolean }[] = [];
+      Object.defineProperty(window, 'heroLayerFrames', { value: frames });
+      const sample = () => {
+        const stage = document.querySelector('.hero-stage');
+        const title = document.querySelector('.hero-title');
+        const depth = document.querySelector('.hero-depth');
+        const image = document.querySelector('.hero-visual');
+        if (stage && title && depth && image) {
+          const bounds = image.getBoundingClientRect();
+          const x = bounds.left + bounds.width / 2;
+          const y = bounds.top + bounds.height * 0.4;
+          if (x > 0 && x < innerWidth && y > 0 && y < innerHeight) {
+            frames.push({
+              opacity: Number(getComputedStyle(image).opacity),
+              ordered:
+                getComputedStyle(stage).isolation === 'isolate' &&
+                Number(getComputedStyle(depth).zIndex) > Number(getComputedStyle(title).zIndex),
+              imageOnTop: Boolean(document.elementFromPoint(x, y)?.closest('.hero-visual'))
+            });
+          }
+        }
+        if (performance.now() < 10000) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await page.goto('/');
+    await settle(page);
+    await jumpPinned(page, '.hero-stage', 0.35);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(1400);
+    const frames = await page.evaluate(
+      () =>
+        (
+          window as Window & {
+            heroLayerFrames?: { opacity: number; ordered: boolean; imageOnTop: boolean }[];
+          }
+        ).heroLayerFrames ?? []
+    );
+    expect(frames.length).toBeGreaterThan(60);
+    expect(
+      frames.every((frame) => frame.opacity === 1),
+      'image never becomes transparent'
+    ).toBe(true);
+    expect(
+      frames.every((frame) => frame.ordered),
+      'explicit image layer above UZMA'
+    ).toBe(true);
+    expect(
+      frames.every((frame) => frame.imageOnTop),
+      'image is the foreground on every frame'
+    ).toBe(true);
+    await context.close();
+  });
+}
+
 test('reference card stack and alternating offer panels follow scroll', async ({ page }) => {
   await page.goto('/');
   await settle(page);
@@ -47,7 +219,7 @@ test('reference card stack and alternating offer panels follow scroll', async ({
   expect(initiallyHidden!.y).toBeGreaterThan(1000);
   await expect(page.locator('.collection-card').first()).toHaveCSS('z-index', '1');
   expect((await page.locator('.offer-panel').last().boundingBox())!.x).toBeLessThan(-1400);
-  await jumpPinned(page, '.collection-showcase', 0.25);
+  await jumpPinned(page, '.collection-showcase', 1 / 3);
   const active = await page.locator('.collection-card').nth(1).boundingBox();
   expect(active!.y).toBeGreaterThan(90);
   expect(active!.y).toBeLessThan(130);
@@ -56,7 +228,7 @@ test('reference card stack and alternating offer panels follow scroll', async ({
     .first()
     .evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m11);
   expect(previousScale).toBeCloseTo(0.95, 2);
-  const gallery = page.getByRole('region', { name: 'Empat koleksi Uzma Fashion' });
+  const gallery = page.getByRole('region', { name: '3 koleksi Uzma Fashion' });
   await gallery.focus();
   await page.keyboard.press('End');
   await page.waitForTimeout(2200);
@@ -97,7 +269,7 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(page.locator('.header-invitation')).toHaveAttribute('href', '#opening');
   await expect(page.locator('.header-invitation')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Grand Opening/);
-  await expect(page.locator('.collection-card')).toHaveCount(4);
+  await expect(page.locator('.collection-card')).toHaveCount(3);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
 
   // Decode every image, including covered and below-the-fold lazy images.
@@ -121,10 +293,24 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(
     page.getByText('Untuk 20 pembeli pertama dengan minimal transaksi Rp300.000.')
   ).toBeVisible();
-  await expect(page.getByText(/Nikmati diskon 10%/)).toBeVisible();
-  await expect(page.getByText(/Dapatkan voucher belanja Rp50.000/)).toBeVisible();
+  await expect(
+    page.getByText(
+      'Rayakan Grand Opening dengan hadiah spesial untuk 10 pembeli pertama, dengan minimal belanja Rp500.000.'
+    )
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      'Jadilah salah satu dari 3 pembeli pertama dan dapatkan voucher belanja Rp50.000 dengan minimal belanja Rp1.000.000.'
+    )
+  ).toBeVisible();
   await jump(page, '#opening');
-  await expect(page.getByRole('heading', { name: 'Countdown' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A new beginning.' })).toBeVisible();
+  await expect(page.locator('.countdown-date time')).toHaveAttribute(
+    'datetime',
+    '2026-10-08T10:00:00+07:00'
+  );
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: 'test-results/desktop-countdown.png' });
   await expect(page.getByRole('link', { name: 'Simpan tanggalnya' })).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(1400);
@@ -350,8 +536,17 @@ test('mobile navigation, card stack, and countdown remain usable', async ({ page
   await page.screenshot({ path: 'test-results/mobile-collection.png' });
   expect(await page.evaluate(() => document.body.scrollWidth)).toBe(390);
   await jump(page, '#opening');
+  // The dial entrance is staggered; measure the grid after every dial settles.
+  await expect
+    .poll(() =>
+      page
+        .locator('.countdown-unit')
+        .last()
+        .evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42)
+    )
+    .toBe(0);
   await page.screenshot({ path: 'test-results/mobile-opening.png' });
-  await expect(page.getByRole('heading', { name: 'Countdown' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A new beginning.' })).toBeVisible();
   const units = await page.locator('.countdown-unit').evaluateAll((elements) =>
     elements.map((element) => ({
       x: element.getBoundingClientRect().x,
@@ -500,15 +695,27 @@ test('mobile browser controls leave no blank strip in pinned sections or below t
     for (const height of [740, 852, 790, 740]) {
       await page.setViewportSize({ width: 393, height });
       await page.waitForTimeout(100);
-      const coverage = await page.locator(selector).evaluate((stage) => {
+      const coverage = await page.locator(selector).evaluate((stage, selector) => {
         const bounds = stage.getBoundingClientRect();
         const viewport = window.visualViewport!;
-        return { top: bounds.top, bottom: bounds.bottom, visibleBottom: viewport.height };
-      });
+        return {
+          top: bounds.top,
+          bottom: bounds.bottom,
+          visibleBottom: viewport.height,
+          bottomPainted: Boolean(
+            document
+              .elementFromPoint(innerWidth / 2, viewport.height - 2)
+              ?.closest(selector === '.hero-stage' ? '.hero-stage,.page-foreground' : selector)
+          )
+        };
+      }, selector);
       expect(Math.abs(coverage.top), `${selector}: pinned top at ${height}px`).toBeLessThan(2);
-      expect(coverage.bottom, `${selector}: covers the visible bottom`).toBeGreaterThanOrEqual(
-        coverage.visibleBottom - 1
-      );
+      expect(coverage.bottomPainted, `${selector}: content covers the visible bottom`).toBe(true);
+      if (selector !== '.hero-stage') {
+        expect(coverage.bottom, `${selector}: covers the visible bottom`).toBeGreaterThanOrEqual(
+          coverage.visibleBottom - 1
+        );
+      }
       await expect(page.locator('.footer-copyright')).not.toBeInViewport();
     }
   }
@@ -542,6 +749,170 @@ test('mobile browser controls leave no blank strip in pinned sections or below t
   await page.screenshot({ path: 'test-results/mobile-footer-browser-controls.png' });
   expect(errors).toEqual([]);
   await context.close();
+});
+
+test('mobile footer stays attached to the document on every fast-scroll frame', async ({
+  browser
+}) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 740 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: devices['Pixel 7'].userAgent
+  });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  try {
+    await page.goto('/');
+    await settle(page);
+    await preserveMobileLayoutViewport(page);
+    const session = await context.newCDPSession(page);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+
+    for (const height of [740, 852, 790, 740, 852]) {
+      await page.setViewportSize({ width: 393, height });
+      const frames = await page.evaluate(async () => {
+        const footer = document.querySelector<HTMLElement>('.sticky-footer')!;
+        const container = footer.parentElement!;
+        const content = document.querySelector('#smooth-content')!;
+        const offsets = [550, 0, 180, 650, 25, 350, 0, 500, 80, 0, 400, 0];
+        const samples: { gap: number; detached: number; extraContent: number }[] = [];
+        const sample = () => {
+          const surface = footer.getBoundingClientRect();
+          const bounds = container.getBoundingClientRect();
+          const viewport = window.visualViewport!;
+          if (
+            bounds.top >= viewport.offsetTop + viewport.height ||
+            bounds.bottom <= viewport.offsetTop
+          )
+            return;
+          samples.push({
+            gap: Math.max(
+              0,
+              Math.min(viewport.offsetTop + viewport.height, bounds.bottom) - surface.bottom
+            ),
+            detached: Math.abs(bounds.bottom - surface.bottom),
+            extraContent: Math.abs(content.getBoundingClientRect().bottom - bounds.bottom)
+          });
+        };
+
+        for (const offset of offsets) {
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+              // Inspect before AND immediately after moving, without waiting
+              // for JS scroll handlers to catch up. A translated footer used
+              // to expose the page background for the next rendered frame.
+              sample();
+              window.scrollTo({
+                top: document.documentElement.scrollHeight - innerHeight - offset,
+                behavior: 'instant'
+              });
+              sample();
+              resolve();
+            });
+          });
+        }
+        return samples;
+      });
+
+      expect(
+        frames.length,
+        'footer is visible throughout the fast-scroll sequence'
+      ).toBeGreaterThanOrEqual(23);
+      for (const [frame, sample] of frames.entries()) {
+        expect(sample.gap, `${height}px, frame ${frame}: no exposed page background`).toBeLessThan(
+          1
+        );
+        expect(
+          sample.detached,
+          `${height}px, frame ${frame}: footer surface stays in flow`
+        ).toBeLessThan(1);
+        expect(
+          sample.extraContent,
+          `${height}px, frame ${frame}: nothing follows the footer`
+        ).toBeLessThan(1);
+      }
+      await expect(page.locator('.sticky-footer')).toHaveCSS('transform', 'none');
+      await expect(page.locator('.footer-copyright')).toBeInViewport();
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test('mobile flings do not paint an overscroll strip below the footer', async ({
+  browser
+}, testInfo) => {
+  test.setTimeout(60000);
+  const context = await browser.newContext({
+    ...devices['Pixel 7'],
+    viewport: { width: 393, height: 740 }
+  });
+  const page = await context.newPage();
+
+  try {
+    await page.goto('/');
+    await settle(page);
+    await preserveMobileLayoutViewport(page);
+    const session = await context.newCDPSession(page);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+
+    for (const height of [740, 852, 740]) {
+      await page.setViewportSize({ width: 393, height });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await page.evaluate(() =>
+          window.scrollTo(0, document.documentElement.scrollHeight - innerHeight - 400)
+        );
+        await session.send('Input.synthesizeScrollGesture', {
+          x: 196,
+          y: Math.round(height * 0.7),
+          yDistance: -1000,
+          speed: 4500,
+          preventFling: false,
+          gestureSourceType: 'touch'
+        });
+        // Elastic overscroll is a compositor effect: DOM bounds stay correct
+        // even when a strip is visibly painted. Inspect actual screenshot pixels
+        // immediately after the fling, without waiting for the bounce to settle.
+        const screenshot = await page.screenshot({
+          path: testInfo.outputPath(`footer-fling-${height}-${attempt}.png`),
+          scale: 'css'
+        });
+        const exposedPixels = await page.evaluate(async (base64) => {
+          const image = new Image();
+          image.src = `data:image/png;base64,${base64}`;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const drawing = canvas.getContext('2d')!;
+          drawing.drawImage(image, 0, 0);
+          const pixels = drawing.getImageData(8, image.height - 4, image.width - 16, 4).data;
+          let exposed = 0;
+          for (let index = 0; index < pixels.length; index += 4) {
+            if (
+              Math.abs(pixels[index] - 183) > 3 ||
+              Math.abs(pixels[index + 1] - 110) > 3 ||
+              Math.abs(pixels[index + 2] - 121) > 3
+            )
+              exposed++;
+          }
+          return exposed;
+        }, screenshot.toString('base64'));
+        expect(
+          exposedPixels,
+          `${height}px, fling ${attempt}: footer color reaches the bottom`
+        ).toBe(0);
+      }
+    }
+    await expect(page.locator('html')).toHaveCSS('overscroll-behavior-y', 'none');
+  } finally {
+    await context.close();
+  }
 });
 
 test('mobile hero and collection fill the viewport through pinning and viewport resize', async ({
@@ -639,7 +1010,7 @@ test('mobile collection keeps the card stack and its text inside short viewports
       `${width}×${height}: first card heading`
     ).toBeLessThan(height);
 
-    for (const [index, progress] of [0, 0.25, 0.5, 0.75].entries()) {
+    for (const [index, progress] of [0, 1 / 3, 2 / 3].entries()) {
       await jumpPinned(page, '.collection-showcase', progress);
       const current = page.locator('.collection-card').nth(index);
       const card = await current.boundingBox();
@@ -659,9 +1030,6 @@ test('mobile collection keeps the card stack and its text inside short viewports
       expect(image!.height).toBeGreaterThan(120);
       expect(heading!.y + heading!.height).toBeLessThan(height);
       expect(description!.y + description!.height).toBeLessThan(height - 8);
-      if (width === 270 && index === 3) {
-        expect(heading!.height, 'Quiet Radiance wraps to two lines').toBeGreaterThan(45);
-      }
       if (index > 0) {
         const previous = await page
           .locator('.collection-card')
@@ -708,7 +1076,7 @@ test('reduced motion skips pinning and responds when the preference changes', as
 test('countdown reaches the opening without negative values or continuing timers', async ({
   page
 }) => {
-  await page.clock.install({ time: new Date('2026-10-25T09:59:58+07:00') });
+  await page.clock.install({ time: new Date('2026-10-08T09:59:58+07:00') });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('.countdown-value').last()).toHaveText(/0[12]/);
@@ -716,6 +1084,51 @@ test('countdown reaches the opening without negative values or continuing timers
   await expect(page.getByText('Grand Opening telah dimulai')).toBeVisible();
   await expect(page.getByRole('timer')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Simpan tanggalnya' })).toHaveCount(0);
+});
+
+test('countdown motion pauses offscreen and cleans up for reduced motion', async ({ page }) => {
+  await page.goto('/');
+  await settle(page);
+  const section = page.locator('#opening');
+  const orbit = page.locator('.countdown-orbit');
+  await expect(section).not.toHaveClass(/is-countdown-visible/);
+  await jump(page, '#opening');
+  await expect(section).toHaveClass(/is-countdown-visible/);
+  await expect(page.getByRole('timer')).toHaveAttribute('aria-live', 'off');
+  await expect(page.locator('.countdown-dial')).toHaveCount(4);
+  const movingTransform = await orbit.evaluate((el) => getComputedStyle(el).transform);
+  await page.waitForTimeout(200);
+  expect(await orbit.evaluate((el) => getComputedStyle(el).transform)).not.toBe(movingTransform);
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(section).not.toHaveClass(/is-countdown-visible/);
+  const pausedTransform = await orbit.evaluate((el) => getComputedStyle(el).transform);
+  await page.waitForTimeout(200);
+  expect(await orbit.evaluate((el) => getComputedStyle(el).transform)).toBe(pausedTransform);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await jump(page, '#opening');
+  await expect(section).not.toHaveClass(/is-countdown-visible/);
+  await expect(page.locator('.countdown-title')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.countdown-value').last()).toHaveCSS('animation-name', 'none');
+  const reducedTransform = await orbit.evaluate((el) => getComputedStyle(el).transform);
+  await page.waitForTimeout(200);
+  expect(await orbit.evaluate((el) => getComputedStyle(el).transform)).toBe(reducedTransform);
+});
+
+test('countdown shows a stable opening message when visited after the deadline', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date('2026-10-08T10:05:00+07:00') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.getByRole('timer')).toHaveCount(0);
+  await expect(page.locator('.opened-message')).toHaveText('Grand Opening telah dimulai');
+  await expect(page.locator('.countdown-date')).toContainText('Kamis, 8 Oktober 2026');
+  await page.clock.fastForward(60000);
+  await expect(page.locator('.countdown-value')).toHaveCount(0);
+  await expect(page.locator('.opened-message')).toHaveText('Grand Opening telah dimulai');
 });
 
 test('prerendered cards and offers are readable without JavaScript', async ({ browser }) => {
@@ -726,11 +1139,18 @@ test('prerendered cards and offers are readable without JavaScript', async ({ br
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4187/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'The New Collection' })).toBeVisible();
-  await expect(page.locator('.collection-card')).toHaveCount(4);
+  await expect(page.getByRole('heading', { name: 'The New Chapter of the Brand' })).toBeVisible();
+  await expect(page.locator('.collection-card')).toHaveCount(3);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
-  await expect(page.getByText('Quiet Radiance', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Dapatkan voucher belanja Rp50.000/)).toBeVisible();
+  await expect(
+    page.getByText('New Store - New Collection - New Story', { exact: true })
+  ).toBeVisible();
+  await expect(page.getByText(/dapatkan voucher belanja Rp50.000/)).toBeVisible();
+  await expect(page.locator('.countdown-title')).toHaveText('A new beginning.');
+  await expect(page.locator('.countdown-date')).toContainText('Kamis, 8 Oktober 2026');
+  await expect(page.locator('.countdown-value').first()).toHaveText('—');
+  await expect(page.locator('[data-story-image]')).toHaveCSS('clip-path', 'none');
+  await expect(page.locator('.story-lead')).toHaveCSS('opacity', '1');
   expect(await page.locator('.pin-spacer').count()).toBe(0);
   await context.close();
 });

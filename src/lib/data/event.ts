@@ -1,10 +1,10 @@
 export const event = {
   brand: 'Uzma Fashion',
   title: 'Grand Opening Uzma Fashion',
-  startsAt: '2026-10-25T10:00:00+07:00',
-  date: '25 Oktober 2026',
-  shortDate: '25.10.26',
-  day: 'Minggu',
+  startsAt: '2026-10-08T10:00:00+07:00',
+  date: '8 Oktober 2026',
+  shortDate: '08.10.26',
+  day: 'Kamis',
   time: '10.00 WIB',
   theme: 'Lulu’ul de Lumière'
 } as const;
@@ -12,51 +12,42 @@ export const event = {
 export const collections = [
   {
     id: '01',
-    name: 'Luminous Depth',
-    category: 'Evening Series',
+    name: 'A New Chapter Begins',
+    category: null,
+    imageCaption: 'Elegant & Premium',
     description:
-      'Siluet panjang dalam warna navy yang tenang, diperkaya kilau lembut untuk malam yang berkesan.',
-    image: 'collection-look',
-    position: '50% 8%',
-    width: 800,
-    height: 1200,
-    alt: 'Busana navy dengan hijab rose gold dan detail mutiara dari koleksi Luminous Depth'
+      'Koleksi terbaru yang dikurasi dengan penuh perhatian untuk menghadirkan keanggunan yang tak lekang oleh waktu dan keindahan yang begitu effortless dalam setiap penampilan.',
+    image: 'uzma-pearl-silk',
+    position: '50% 70%',
+    width: 1536,
+    height: 1024,
+    alt: 'Sutra ocean blue dan mutiara dengan sentuhan rose gold'
   },
   {
     id: '02',
-    name: 'Pearl Reverie',
+    name: 'The Spotligh Is On',
     category: 'Signature Detail',
+    imageCaption: 'Fashionable & Mewah',
     description:
-      'Tekstur halus dan aksen mutiara membentuk karakter anggun yang sederhana namun tetap istimewa.',
+      'A new collection is ready to take the stage. Tempat keanggunan berpadu dengan gaya fashion kontemporer.',
     image: 'pearl-detail',
     position: '50% 45%',
     width: 800,
     height: 1200,
-    alt: 'Detail mutiara dan bordir lembut pada koleksi Pearl Reverie'
+    alt: 'Detail mutiara dan bordir lembut pada busana Uzma Fashion'
   },
   {
     id: '03',
-    name: 'Rose Nocturne',
+    name: 'New Store - New Collection - New Story',
     category: 'Occasion Edit',
+    imageCaption: 'Catchy & Modern',
     description:
-      'Perpaduan warna malam dan rose gold untuk tampilan feminin yang tegas, modern, dan penuh percaya diri.',
-    image: 'uzma-hero',
-    position: '50% 22%',
-    width: 800,
-    height: 1422,
-    alt: 'Busana panjang navy dengan bordir rose gold dari koleksi Rose Nocturne'
-  },
-  {
-    id: '04',
-    name: 'Quiet Radiance',
-    category: 'Grand Opening Edit',
-    description:
-      'Pilihan busana serbaguna dengan garis bersih dan warna hangat untuk menemani momen sehari-hari.',
+      'Kami membuka pintu menuju dunia fashion yang baru. Dengan koleksi terbaru dan gaya berbeda yang telah kami ciptakan khusus untuk anda.',
     image: 'grand-opening-store',
     position: '50% 50%',
     width: 800,
     height: 1000,
-    alt: 'Pilihan busana modest berwarna navy, ivory, dan rose di Uzma Fashion'
+    alt: 'Interior butik Uzma Fashion dengan busana navy, ivory, dan rose'
   }
 ] as const;
 
@@ -69,31 +60,32 @@ export const offers = [
     italicTitle: 'Gift',
     detail: 'Untuk 20 pembeli pertama dengan minimal transaksi Rp300.000.',
     highlight: '20',
-    image: 'offer-exclusive-gift',
-    alt: 'Hadiah eksklusif grand opening Uzma Fashion'
+    image: 'offer-perfume-luxury',
+    alt: 'Ilustrasi parfum mewah dengan detail rose gold di atas kain ocean blue'
   },
   {
     id: '02',
     label: 'Opening Day Special',
-    kicker: 'For every purchase',
+    kicker: 'For the first ten',
     title: 'Opening Day',
     italicTitle: 'Special',
-    detail: 'Nikmati diskon 10% untuk setiap pembelian selama hari Grand Opening.',
-    highlight: '10%',
-    image: 'offer-opening-day',
-    alt: 'Pilihan busana dengan penawaran spesial hari grand opening'
+    detail:
+      'Rayakan Grand Opening dengan hadiah spesial untuk 10 pembeli pertama, dengan minimal belanja Rp500.000.',
+    highlight: '10 pembeli pertama',
+    image: 'offer-premium-hijab',
+    alt: 'Ilustrasi hijab premium rose gold dengan lipatan lembut di atas kain ocean blue'
   },
   {
     id: '03',
     label: 'Come Back & Discover More',
-    kicker: 'Your next visit',
+    kicker: 'For the first three',
     title: 'Come Back &',
     italicTitle: 'Discover More',
     detail:
-      'Dapatkan voucher belanja Rp50.000 untuk kunjungan berikutnya dengan minimal transaksi Rp300.000.',
+      'Jadilah salah satu dari 3 pembeli pertama dan dapatkan voucher belanja Rp50.000 dengan minimal belanja Rp1.000.000.',
     highlight: 'Rp50.000',
     image: 'offer-return-visit',
-    alt: 'Voucher kunjungan berikutnya Uzma Fashion'
+    alt: 'Ilustrasi voucher belanja Uzma Fashion dengan tas belanja rose gold'
   }
 ] as const;
 

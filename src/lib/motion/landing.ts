@@ -3,12 +3,18 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { SplitText } from 'gsap/SplitText';
 import { goto } from '$app/navigation';
+import { createCountdownMotion } from './countdown.js';
 
 function createImageSlideReveal(frame: HTMLElement, duration = 1): gsap.core.Timeline {
+  const image = frame.querySelector('img');
+  // Set the concealed state outside the paused parent timeline. A fromTo()
+  // start state can be reverted by a refresh before its ScrollTrigger enters.
+  gsap.set(frame, { clipPath: 'inset(0% 100% 0% 0%)' });
+  gsap.set(image, { xPercent: 6, scale: 1.12 });
   return gsap
     .timeline({ defaults: { duration, ease: 'none' } })
-    .fromTo(frame, { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)' }, 0)
-    .fromTo(frame.querySelector('img'), { xPercent: 6, scale: 1.12 }, { xPercent: 0, scale: 1 }, 0);
+    .to(frame, { clipPath: 'inset(0% 0% 0% 0%)' }, 0)
+    .to(image, { xPercent: 0, scale: 1 }, 0);
 }
 
 export function createLandingMotion(root: HTMLElement): () => void {
@@ -17,7 +23,6 @@ export function createLandingMotion(root: HTMLElement): () => void {
 
   const media = gsap.matchMedia();
   let smoother: ScrollSmoother | undefined;
-  let updateFooter: (() => void) | undefined;
   let navigatingAnchor = false;
   const context = gsap.context(() => {
     ScrollTrigger.saveStyles(root.querySelectorAll('.collection-card, .offer-panel'));
@@ -33,7 +38,6 @@ export function createLandingMotion(root: HTMLElement): () => void {
           content: root.querySelector<HTMLElement>('#smooth-content')!,
           smooth: 1,
           ignoreMobileResize: true,
-          onUpdate: () => updateFooter?.(),
           onFocusIn: (_smoother, event) =>
             navigatingAnchor || (event.target as Element).closest('#mobile-navigation')
               ? false
@@ -103,7 +107,6 @@ export function createLandingMotion(root: HTMLElement): () => void {
 
         heroTimeline
           .to('.hero-title', { opacity: 0, ease: 'none', duration: 0.6 }, 0)
-          .to('.hero-visual-caption', { opacity: 0, duration: 0.18 }, 0)
           .fromTo(
             frame,
             {
@@ -270,9 +273,10 @@ export function createLandingMotion(root: HTMLElement): () => void {
       () => {
         const revealElements = root.querySelectorAll<HTMLElement>('[data-reveal]');
         revealElements.forEach((element) => {
-          gsap.from(element, {
-            y: 32,
-            autoAlpha: 0,
+          gsap.set(element, { y: 32, autoAlpha: 0 });
+          gsap.to(element, {
+            y: 0,
+            autoAlpha: 1,
             duration: 1,
             ease: 'power2.out',
             scrollTrigger: { trigger: element, start: 'top 94%', once: true }
@@ -287,42 +291,43 @@ export function createLandingMotion(root: HTMLElement): () => void {
             autoSplit: true,
             aria: 'auto',
             // Returning the tween preserves progress when responsive text reflows.
-            onSplit: (split) =>
-              gsap.from(split.lines, {
-                yPercent: 110,
-                opacity: 0,
+            onSplit: (split) => {
+              gsap.set(split.lines, { yPercent: 110, opacity: 0 });
+              return gsap.to(split.lines, {
+                yPercent: 0,
+                opacity: 1,
                 duration: 0.9,
                 stagger: 0.1,
                 ease: 'power3.out',
                 scrollTrigger: { trigger: paragraph, start: 'top 88%', once: true }
-              })
+              });
+            }
           });
         });
 
         const storyImage = root.querySelector<HTMLElement>('[data-story-image]')!;
+        const storyWindow = storyImage.querySelector('.image-window');
+        gsap.set(storyImage, { clipPath: 'inset(0% 100% 0% 0%)' });
+        gsap.set(storyWindow, { x: 48 });
         gsap
           .timeline({
             defaults: { duration: 1.35, ease: 'power3.inOut' },
             scrollTrigger: { trigger: storyImage, start: 'top 88%', once: true }
           })
-          .fromTo(
-            storyImage,
-            { clipPath: 'inset(0% 100% 0% 0%)' },
-            { clipPath: 'inset(0% 0% 0% 0%)' },
-            0
-          )
+          .to(storyImage, { clipPath: 'inset(0% 0% 0% 0%)' }, 0)
           // Slide the window so the image's own parallax transform remains independent.
-          .from(storyImage.querySelector('.image-window'), { x: 48 }, 0);
+          .to(storyWindow, { x: 0 }, 0);
 
         gsap.from('[data-story-word]', {
-          opacity: 0.2,
+          opacity: () => (window.matchMedia('(max-width: 599px)').matches ? 0.55 : 0.2),
           stagger: 0.15,
           ease: 'none',
           scrollTrigger: {
             trigger: '.story-heading',
             start: 'top 85%',
             end: 'bottom 43%',
-            scrub: 0.7
+            scrub: 0.7,
+            invalidateOnRefresh: true
           }
         });
 
@@ -337,11 +342,14 @@ export function createLandingMotion(root: HTMLElement): () => void {
           }
         });
 
-        gsap.from('.hero-visual', { opacity: 0, y: 30, duration: 1.5, ease: 'power3.out' });
+        // Keep the image opaque throughout entrance so UZMA cannot show through it.
+        gsap.from('.hero-visual', { y: 30, duration: 1.5, ease: 'power3.out' });
         gsap.from('.hero-title > span', { y: 45, opacity: 0, duration: 1.6, ease: 'power3.out' });
       },
       root
     );
+
+    media.add('(prefers-reduced-motion: no-preference)', () => createCountdownMotion(root), root);
 
     // Create after the hero pin so the transition follows the completed expansion.
     media.add(
@@ -368,49 +376,6 @@ export function createLandingMotion(root: HTMLElement): () => void {
           { y: 0, ease: 'none', duration: 1 },
           0
         );
-
-        // Browser controls change the visible bottom without changing lvh or
-        // document geometry. Derive the reveal from live bounds instead of a
-        // cached ScrollTrigger end so the footer never slides above its end.
-        const footerContainer = root.querySelector<HTMLElement>('.footer-reveal')!;
-        const footer = footerContainer.querySelector<HTMLElement>('.sticky-footer')!;
-        const footerReveal = gsap.fromTo(
-          footer,
-          { yPercent: -100 },
-          { yPercent: 0, ease: 'none', paused: true, duration: 1 }
-        );
-        let footerFrame = 0;
-        const queueFooterUpdate = () => {
-          if (footerFrame) return;
-          footerFrame = requestAnimationFrame(() => {
-            footerFrame = 0;
-            const bounds = footerContainer.getBoundingClientRect();
-            const viewport = window.visualViewport;
-            const visibleBottom = viewport
-              ? viewport.offsetTop + viewport.height
-              : window.innerHeight;
-            footerReveal.progress(
-              gsap.utils.clamp(0, 1, (visibleBottom - bounds.top) / bounds.height)
-            );
-          });
-        };
-        updateFooter = queueFooterUpdate;
-        window.addEventListener('scroll', queueFooterUpdate, { passive: true });
-        window.addEventListener('resize', queueFooterUpdate);
-        window.visualViewport?.addEventListener('resize', queueFooterUpdate);
-        window.visualViewport?.addEventListener('scroll', queueFooterUpdate);
-        ScrollTrigger.addEventListener('refresh', queueFooterUpdate);
-        queueFooterUpdate();
-
-        return () => {
-          updateFooter = undefined;
-          cancelAnimationFrame(footerFrame);
-          window.removeEventListener('scroll', queueFooterUpdate);
-          window.removeEventListener('resize', queueFooterUpdate);
-          window.visualViewport?.removeEventListener('resize', queueFooterUpdate);
-          window.visualViewport?.removeEventListener('scroll', queueFooterUpdate);
-          ScrollTrigger.removeEventListener('refresh', queueFooterUpdate);
-        };
       },
       root
     );

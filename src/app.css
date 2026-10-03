@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './lib/styles/reference-sections.css';
+@import './lib/styles/countdown.css';
 
 @font-face {
   font-family: 'Cormorant Garamond';
@@ -41,6 +42,13 @@
   html {
     background: var(--color-paper);
     scroll-padding-top: 24px;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    html {
+      /* Stop compositor bounce exposing the page canvas past the footer.
+         Normal touch scrolling and browser-toolbar resizing remain native. */
+      overscroll-behavior-y: none;
+    }
   }
   body {
     margin: 0;
@@ -213,6 +221,7 @@
     --hero-frame-height: 66%;
     --hero-frame-top: 16%;
     position: relative;
+    isolation: isolate;
     height: calc(100svh - 108px);
     min-height: 680px;
     max-height: 1080px;
@@ -220,6 +229,7 @@
   }
   .hero-title {
     position: absolute;
+    z-index: 0;
     top: 20%;
     left: 0;
     width: 100%;
@@ -233,6 +243,7 @@
   .hero-depth {
     position: absolute;
     inset: 0;
+    z-index: 1;
   }
   .hero-visual {
     position: absolute;

@@ -25,24 +25,59 @@
 </script>
 
 <section id="opening" class="countdown-section" aria-labelledby="invitation-title">
-  <div class="countdown-panel" data-reveal>
-    <h2 id="invitation-title" class="countdown-title">Countdown</h2>
-    {#if opened}
-      <p class="opened-message">Grand Opening telah dimulai</p>
-    {:else}
-      <div
-        class="countdown"
-        role="timer"
-        aria-label={`Hitung mundur menuju ${event.date} pukul ${event.time}`}
-      >
-        {#each countdown as part}
-          <div class="countdown-unit">
-            <strong class="countdown-value"
-              >{part.value === null ? '—' : String(part.value).padStart(2, '0')}</strong
-            ><span class="countdown-label">{part.label}</span>
-          </div>
-        {/each}
-      </div>
-    {/if}
+  <div class="countdown-atmosphere" aria-hidden="true">
+    <div class="countdown-halo countdown-halo-one"></div>
+    <div class="countdown-halo countdown-halo-two"></div>
+    <div class="countdown-orbit"><span class="countdown-pearl"></span></div>
+  </div>
+  <div class="countdown-panel">
+    <header class="countdown-heading">
+      <p class="countdown-eyebrow" data-countdown-reveal>Uzma Fashion · Grand Opening</p>
+      <h2 id="invitation-title" class="countdown-title" data-countdown-reveal>
+        A new <em>beginning.</em>
+      </h2>
+      <p class="countdown-intro" data-countdown-reveal>
+        Hitung mundur menuju cerita baru yang istimewa.
+      </p>
+    </header>
+    <div class="countdown-display">
+      {#if opened}
+        <p class="opened-message">Grand Opening telah dimulai</p>
+      {:else}
+        <div
+          class="countdown"
+          role="timer"
+          aria-live="off"
+          aria-label={`Hitung mundur menuju ${event.date} pukul ${event.time}`}
+        >
+          {#each countdown as part, index (part.label)}
+            <div class="countdown-unit" data-countdown-reveal>
+              <div class="countdown-dial">
+                <span class="countdown-dial-accent" aria-hidden="true"></span>
+                <span class="countdown-number-window">
+                  {#key part.value}
+                    <strong class="countdown-value"
+                      >{part.value === null ? '—' : String(part.value).padStart(2, '0')}</strong
+                    >
+                  {/key}
+                </span>
+                <span class="countdown-label">{part.label}</span>
+              </div>
+              {#if index < 3}<span class="countdown-separator" aria-hidden="true">:</span>{/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+    <div class="countdown-date" data-countdown-reveal>
+      <span class="countdown-date-rule" aria-hidden="true"></span>
+      <time datetime={event.startsAt}>
+        <span>{event.day}, {event.date}</span>
+        <span class="countdown-date-dot" aria-hidden="true"></span>
+        <span>{event.time}</span>
+      </time>
+      <span class="countdown-date-rule" aria-hidden="true"></span>
+    </div>
+    <p class="countdown-closing" data-countdown-reveal>Kami menantikan kehadiran Anda.</p>
   </div>
 </section>

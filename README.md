@@ -1,6 +1,6 @@
 # Uzma Fashion — Grand Opening
 
-Website launching satu halaman dengan arah editorial, foto lokal, dan animasi scroll GSAP. Data acara, empat koleksi, dan tiga promo mengikuti [website Uzma](https://uzma.onlytest.my.id), diperiksa 28 September 2026.
+Website launching satu halaman dengan arah editorial, visual fashion, dan animasi scroll GSAP. Tiga kartu brand dan tiga promo dikembangkan dari [website Uzma](https://uzma.onlytest.my.id), dengan revisi konten dan tanggal acara dari client.
 
 ## Menjalankan
 
@@ -42,22 +42,24 @@ Versi diperiksa langsung di npm saat implementasi. SvelteKit 3 masih prerelease;
 
 ## Konten dan perilaku
 
-Data yang dapat diedit berada di `src/lib/data/event.ts`. Tanggal acara menggunakan zona waktu eksplisit: **25 Oktober 2026, 10.00 WIB**. Countdown dimulai di browser agar tidak menyebabkan perbedaan SSR dan berhenti ketika acara dimulai.
+Data yang dapat diedit berada di `src/lib/data/event.ts`. Tanggal acara menggunakan zona waktu eksplisit: **8 Oktober 2026, 10.00 WIB**. Countdown dimulai di browser agar tidak menyebabkan perbedaan SSR dan berhenti ketika acara dimulai.
 
 Alamat, peta, kontak, serta akun sosial belum tersedia di website sumber, sehingga tidak ditambahkan sebagai data rekaan. Jika nanti tersedia, masukkan data sebenarnya sebelum menambahkan CTA lokasi atau kontak.
 
 Animasi utama di `src/lib/motion/landing.ts`:
 
 - Desktop memakai [ScrollSmoother](https://gsap.com/docs/v3/Plugins/ScrollSmoother/). Perangkat sentuh memakai scroll native agar konten tetap berada dalam alur dokumen saat bilah browser muncul/hilang; seluruh animasi GSAP tetap aktif.
-- Pembuka desktop dan mobile: foto portrait membesar sampai memenuhi viewport, lalu tetap dipin saat section Welcome naik menutupinya. Ukuran pin memakai viewport besar yang stabil (`lvh`); perhitungan ulang dilakukan saat ukuran layout berubah, seperti rotasi layar, bukan hanya saat bilah browser berubah.
+- Pembuka desktop dan mobile: foto butik membesar sampai memenuhi viewport, lalu tetap dipin saat section Welcome naik menutupinya. Ukuran pin memakai viewport besar yang stabil (`lvh`); perhitungan ulang dilakukan saat ukuran layout berubah, seperti rotasi layar, bukan hanya saat bilah browser berubah. [Referensi ScrollTrigger](https://gsap.com/docs/v3/Plugins/ScrollTrigger/).
 - Cerita: teks muncul mengikuti scroll dan foto bergerak dengan parallax ringan.
-- Koleksi: empat kartu bertumpuk, dengan teks di kiri dan gambar di kanan pada desktop. Susunan, warna, ukuran, dan tipografi mengikuti website referensi. Tombol panah, Home, dan End dapat digunakan ketika area koleksi difokuskan.
-- Promo: tiga panel bergantian dari kanan lalu kiri sesuai referensi, diikuti ketentuan promo dan countdown berkotak.
-- Footer: “Coming Soon” pada latar rose, terbuka dari balik section countdown dan tetap dibatasi dalam area terakhir dokumen. Reveal mengikuti batas `visualViewport` aktual saat scroll/resize sehingga tidak menyisakan celah ketika bilah browser berubah.
+- Koleksi: tiga kartu bertumpuk, dengan teks di kiri dan gambar di kanan pada desktop. Tombol panah, Home, dan End dapat digunakan ketika area koleksi difokuskan.
+- Promo: tiga panel bergantian dari kanan lalu kiri sesuai referensi, diikuti ketentuan promo.
+- Countdown: empat dial beraksen rose gold pada latar ocean blue, angka berganti lembut, reveal berurutan, dan orbit mutiara yang berhenti ketika section/tab tidak terlihat. Dua kolom pada ponsel; tanggal 8 Oktober 2026 pukul 10.00 WIB tetap tampil tanpa JavaScript. Animasi mengikuti reduced-motion menggunakan [GSAP matchMedia](https://gsap.com/docs/v3/GSAP/gsap.matchMedia%28%29/) dan [context cleanup](https://gsap.com/docs/v3/GSAP/gsap.context%28%29/). Versi sebelum perombakan tersimpan di tag lokal `checkpoint-before-countdown-redesign-2026-10-03` (`08839ddfca02c936da7987d3f56913a75dcb0428`); pulihkan hanya perubahan terkait bila diperlukan.
+- Footer: “Coming Soon” pada latar rose menjadi section terakhir dalam alur dokumen, tanpa translasi footer atau koreksi posisi per-frame. Batas bawah halaman tidak lagi bergantung pada callback scroll/resize yang dapat tertinggal dari scroll native. Animasi hero, koleksi, dan promo tetap dipertahankan. [Penjelasan GSAP tentang perbedaan thread scroll dan JavaScript](<https://gsap.com/docs/v3/Plugins/ScrollTrigger/static.normalizeScroll()/#details>).
+- Batas scroll mobile memakai `overscroll-behavior-y: none` pada root agar momentum tidak memantulkan halaman dan membuka latar kosong setelah footer. Ini juga menonaktifkan gesture pull-to-refresh bawaan; scroll biasa dan perubahan bilah browser tetap native. [Referensi Chrome](https://developer.chrome.com/blog/overscroll-behavior).
 - Reduced motion menonaktifkan smoothing, pinning, dan animasi nonesensial. Konten dirender secara statis dan tetap terbaca tanpa JavaScript.
 
 Lifecycle memakai [`gsap.context()`](<https://gsap.com/docs/v3/GSAP/gsap.context()/>) dan [`gsap.matchMedia()`](<https://gsap.com/docs/v3/GSAP/gsap.matchMedia()/>); semua animasi, pin, listener, dan timer dibersihkan saat komponen dilepas atau kondisi media berubah. [Referensi ScrollTrigger](https://gsap.com/docs/v3/Plugins/ScrollTrigger/).
 
 Gaya koleksi hingga footer dipisahkan dalam `src/lib/styles/reference-sections.css`. Bagian ini memakai font sistem yang sama dengan website referensi. Hero dan Welcome mempertahankan revisi sebelumnya.
 
-Foto berasal dari website Uzma. Font Cormorant Garamond dan Manrope disajikan lokal, beserta lisensi OFL di `static/fonts/`.
+Foto butik, detail mutiara, dan voucher berasal dari website Uzma. Ilustrasi parfum dan hijab premium dibuat dengan imagegen bawaan. Dua gambar promo memakai nuansa rose gold dan ocean blue, dengan varian WebP 480/800 piksel; [prompt dan catatan aset promo](docs/visual-assets/offers-luxury-promo.prompt.txt). Font Cormorant Garamond dan Manrope disajikan lokal, beserta lisensi OFL di `static/fonts/`.

@@ -242,6 +242,8 @@
 }
 
 .sticky-footer {
+  /* Keep the painted document boundary in flow. Native scrolling can run
+     ahead of JS; translating this surface exposes a gap for a rendered frame. */
   position: relative;
   display: grid;
   width: 100%;
@@ -301,8 +303,7 @@
 }
 
 /* Simplified content flow */
-.collection-section,
-.countdown-section {
+.collection-section {
   padding: var(--section-space) var(--page-gutter);
 }
 
@@ -475,31 +476,10 @@
   line-height: 1.7;
 }
 
-.countdown-section {
-  display: grid;
-  min-height: calc(100svh - var(--site-header-height));
-  place-items: center;
-  background: var(--ocean-teal);
-}
-
-.countdown-panel {
-  width: min(100%, 72rem);
-}
-
-.countdown-title {
-  margin: 0 0 80px;
-  font-family: var(--font-display);
-  font-size: clamp(2.5rem, 6vw, 5rem);
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  text-align: center;
-}
-
 @media (max-width: 47.99rem) {
   .collection-section {
     --collection-stage-top: clamp(4.5rem, 15svh, 7rem);
-    --collection-stack-depth: 24px;
+    --collection-stack-depth: 16px;
     padding-inline: 0;
   }
 
@@ -519,10 +499,6 @@
     height: 100%;
     overflow: visible;
     border-radius: 0;
-  }
-
-  .countdown-section {
-    padding-inline: 1.25rem;
   }
 
   .collection-image img {
@@ -623,6 +599,10 @@
     height: clamp(10rem, 24svh, 13rem);
   }
 
+  .offer-panel-one .offer-visual img {
+    object-position: 50% 20%;
+  }
+
   .offer-copy h3 {
     font-size: clamp(3.5rem, min(16vw, 11svh), 5.6rem);
   }
@@ -634,62 +614,5 @@
 
   .offer-copy > p:not(.offer-kicker) {
     font-size: clamp(1rem, 4.5vw, 1.2rem);
-  }
-}
-
-.countdown {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid #d1d5db;
-}
-
-.countdown-unit {
-  display: grid;
-  min-width: 0;
-  gap: 0.55rem;
-  padding: clamp(1.1rem, 3vw, 2rem) 0.5rem;
-  text-align: center;
-}
-
-.countdown-unit + .countdown-unit {
-  border-left: 1px solid #d1d5db;
-}
-
-.countdown-value {
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 6vw, 4.4rem);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-}
-
-.countdown-label {
-  font-size: clamp(0.52rem, 1.4vw, 0.67rem);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.opened-message {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: 2rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 5vw, 3.2rem);
-  text-align: center;
-}
-
-@media (max-width: 639px) {
-  .countdown {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .countdown-unit:nth-child(3) {
-    border-left: 0;
-  }
-
-  .countdown-unit:nth-child(n + 3) {
-    border-top: 1px solid #d1d5db;
   }
 }

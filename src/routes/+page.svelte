@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { event } from '#lib/data/event.js';
   import Header from '#lib/components/Header.svelte';
   import Hero from '#lib/components/Hero.svelte';
   import Story from '#lib/components/Story.svelte';
@@ -32,15 +33,12 @@
 
 <svelte:head>
   <title>Uzma Fashion · Grand Opening</title>
-  <meta name="description" content="Grand Opening Uzma Fashion, 25 Oktober 2026 pukul 10.00 WIB." />
+  <meta name="description" content={`${event.title}, ${event.date} pukul ${event.time}.`} />
   <meta property="og:title" content="Uzma Fashion · Grand Opening" />
-  <meta
-    property="og:description"
-    content="Grand Opening Uzma Fashion, 25 Oktober 2026 pukul 10.00 WIB."
-  />
+  <meta property="og:description" content={`${event.title}, ${event.date} pukul ${event.time}.`} />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="id_ID" />
-  <meta property="og:image" content="/images/uzma-hero-800.webp" />
+  <meta property="og:image" content="/images/uzma-pearl-silk-1120.webp" />
   <meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 

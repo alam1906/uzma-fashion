@@ -12,12 +12,13 @@
     <div class="hero-depth">
       <figure class="hero-visual">
         <EditorialImage
-          name="uzma-hero"
-          alt="Koleksi modest fashion Uzma dalam warna navy dengan sentuhan rose gold"
+          name="grand-opening-store"
+          alt="Interior butik Uzma Fashion dengan koleksi busana navy, ivory, dan rose"
           width={800}
-          height={1422}
+          height={1000}
           sizes="100vw"
           priority
+          large
         />
         <div class="hero-shade"></div>
         <div class="hero-reveal-placement" aria-hidden="true">
@@ -30,10 +31,6 @@
             </p>
           </div>
         </div>
-        <figcaption class="hero-visual-caption">
-          <span class="eyebrow">Lulu’ul de Lumière</span>
-          <span class="font-display text-2xl italic">A pearl from the deep.</span>
-        </figcaption>
       </figure>
     </div>
   </div>
