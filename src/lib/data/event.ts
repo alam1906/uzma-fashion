@@ -38,7 +38,7 @@ export const collections = [
   },
   {
     id: '03',
-    name: 'New Store - New Collection - New Story',
+    name: 'New Store\nNew Collection\nNew Story',
     category: 'Occasion Edit',
     imageCaption: 'Catchy & Modern',
     description:

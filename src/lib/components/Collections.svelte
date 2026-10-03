@@ -34,7 +34,9 @@
             <p class="collection-number">
               Collection {collection.id} / {String(collections.length).padStart(2, '0')}
             </p>
-            <h3 id={`collection-${collection.id}`}>{collection.name}</h3>
+            <h3 id={`collection-${collection.id}`} class="whitespace-pre-line">
+              {collection.name}
+            </h3>
             {#if collection.category}
               <span>{collection.category}</span>
             {/if}

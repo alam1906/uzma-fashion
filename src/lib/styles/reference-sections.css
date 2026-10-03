@@ -522,6 +522,12 @@
     margin-bottom: 0.55rem;
   }
 
+  .collection-copy {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
   .collection-showcase.is-animated .collection-number,
   .collection-showcase.is-animated .collection-copy > span {
     font-size: clamp(0.4rem, 1.8vw, 0.55rem);
@@ -532,7 +538,7 @@
   }
 
   .collection-showcase.is-animated .collection-copy h3 {
-    max-width: 8ch;
+    max-width: 100%;
     font-size: clamp(2rem, 10vw, 3rem);
   }
 
@@ -545,6 +551,7 @@
   }
 
   .collection-description {
+    max-width: none;
     margin-top: 0.85rem;
     line-height: 1.5;
   }

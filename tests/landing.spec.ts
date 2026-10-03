@@ -972,7 +972,8 @@ test('mobile collection keeps the card stack and its text inside short viewports
   for (const { width, height } of [
     { width: 270, height: 573 },
     { width: 320, height: 640 },
-    { width: 390, height: 740 }
+    { width: 390, height: 740 },
+    { width: 767, height: 900 }
   ]) {
     const context = await browser.newContext({
       viewport: { width, height },
@@ -1017,6 +1018,19 @@ test('mobile collection keeps the card stack and its text inside short viewports
       const heading = await current.locator('h3').boundingBox();
       const description = await current.locator('.collection-description').boundingBox();
       const image = await current.locator('.collection-image').boundingBox();
+      const copy = await current.locator('.collection-copy').boundingBox();
+      expect(
+        Math.abs(heading!.width - copy!.width),
+        `${width}×${height}: heading uses text column`
+      ).toBeLessThan(1);
+      expect(
+        Math.abs(description!.width - copy!.width),
+        `${width}×${height}: description uses text column`
+      ).toBeLessThan(1);
+      expect(
+        Math.abs(copy!.width - image!.width),
+        `${width}×${height}: text uses available card width`
+      ).toBeLessThan(1);
       expect(card!.y, `${width}×${height}: card ${index + 1} top`).toBeGreaterThan(70);
       expect(
         card!.y + card!.height,
@@ -1040,6 +1054,7 @@ test('mobile collection keeps the card stack and its text inside short viewports
         );
       }
     }
+    await page.screenshot({ path: `test-results/mobile-${width}-collection-text-width.png` });
     await context.close();
   }
 });
@@ -1142,9 +1157,9 @@ test('prerendered cards and offers are readable without JavaScript', async ({ br
   await expect(page.getByRole('heading', { name: 'The New Chapter of the Brand' })).toBeVisible();
   await expect(page.locator('.collection-card')).toHaveCount(3);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
-  await expect(
-    page.getByText('New Store - New Collection - New Story', { exact: true })
-  ).toBeVisible();
+  await expect(page.locator('#collection-03')).toHaveText('New Store\nNew Collection\nNew Story');
+  await expect(page.locator('#collection-03')).toHaveCSS('white-space', 'pre-line');
+  await expect(page.locator('#collection-03')).toBeVisible();
   await expect(page.getByText(/dapatkan voucher belanja Rp50.000/)).toBeVisible();
   await expect(page.locator('.countdown-title')).toHaveText('A new beginning.');
   await expect(page.locator('.countdown-date')).toContainText('Kamis, 8 Oktober 2026');
