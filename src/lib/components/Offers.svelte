@@ -20,11 +20,11 @@
             {#if index === 0}
               <h2 id="offers-title">Special Grand<br />Opening Offers</h2>
             {/if}
-            <h3>
+            <h3 data-offer-text>
               {offer.title}{#if index > 0}<br />{:else}{' '}
               {/if}<em>{offer.italicTitle}</em>
             </h3>
-            <p>
+            <p data-offer-text>
               {#if index === 0}
                 {offer.detail}
               {:else}

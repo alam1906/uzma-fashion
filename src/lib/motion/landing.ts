@@ -17,6 +17,68 @@ function createImageSlideReveal(frame: HTMLElement, duration = 1): gsap.core.Tim
     .to(image, { xPercent: 0, scale: 1 }, 0);
 }
 
+function createPanelTextMotion(root: HTMLElement): () => void {
+  const animations = new Map<Element, gsap.core.Tween>();
+  const revealed = new Set<Element>();
+  // Observe the whole card/panel, including ancestor clipping and transforms.
+  // Its title and description start together only after 70% is visible.
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.7) continue;
+        revealed.add(entry.target);
+        entry.target
+          .querySelectorAll('[data-collection-text], [data-offer-text]')
+          .forEach((text) => {
+            animations.get(text)?.play();
+          });
+        observer.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.7 }
+  );
+
+  root.querySelectorAll<HTMLElement>('.collection-card, .offer-panel').forEach((panel) => {
+    panel
+      .querySelectorAll<HTMLElement>('[data-collection-text], [data-offer-text]')
+      .forEach((text) => {
+        SplitText.create(text, {
+          type: 'lines',
+          mask: 'lines',
+          linesClass: text.hasAttribute('data-offer-text')
+            ? 'offer-reveal-line'
+            : 'collection-reveal-line',
+          autoSplit: true,
+          aria: 'auto',
+          // Preserve the third title's explicit newlines in its pre-line layout.
+          reduceWhiteSpace: getComputedStyle(text).whiteSpace !== 'pre-line',
+          onSplit: (split) => {
+            gsap.set(split.lines, { yPercent: 110, opacity: 0 });
+            const animation = gsap.to(split.lines, {
+              yPercent: 0,
+              opacity: 1,
+              duration: 0.8,
+              stagger: 0.09,
+              ease: 'power3.out',
+              paused: !revealed.has(panel)
+            });
+            animations.set(text, animation);
+            // SplitText restores progress on responsive re-splitting when the
+            // animation is returned; already-revealed panels do not restart.
+            return animation;
+          }
+        });
+      });
+    observer.observe(panel);
+  });
+
+  return () => {
+    observer.disconnect();
+    animations.clear();
+    revealed.clear();
+  };
+}
+
 export function createLandingMotion(root: HTMLElement): () => void {
   gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
   ScrollTrigger.config({ ignoreMobileResize: true });
@@ -271,6 +333,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
     media.add(
       '(prefers-reduced-motion: no-preference)',
       () => {
+        const stopPanelTextMotion = createPanelTextMotion(root);
         const revealElements = root.querySelectorAll<HTMLElement>('[data-reveal]');
         revealElements.forEach((element) => {
           gsap.set(element, { y: 32, autoAlpha: 0 });
@@ -345,6 +408,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
         // Keep the image opaque throughout entrance so UZMA cannot show through it.
         gsap.from('.hero-visual', { y: 30, duration: 1.5, ease: 'power3.out' });
         gsap.from('.hero-title > span', { y: 45, opacity: 0, duration: 1.6, ease: 'power3.out' });
+        return stopPanelTextMotion;
       },
       root
     );

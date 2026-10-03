@@ -157,6 +157,17 @@
   line-height: 0.88;
 }
 
+.collection-reveal-line-mask,
+.offer-reveal-line-mask {
+  /* Leave room for serif ascenders/descenders without changing line spacing. */
+  padding-block: 0.12em;
+}
+
+.collection-reveal-line,
+.offer-reveal-line {
+  margin-block: -0.12em;
+}
+
 .collection-copy > span {
   display: block;
   margin-top: 1.5rem;
@@ -247,7 +258,6 @@
   position: relative;
   display: grid;
   width: 100%;
-  min-height: var(--scene-height);
   place-items: center;
   overflow: hidden;
   padding: 2rem var(--page-gutter);
@@ -256,21 +266,7 @@
   pointer-events: none;
 }
 
-.footer-coming {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(4rem, 14vw, 12rem);
-  font-weight: 400;
-  letter-spacing: -0.055em;
-  line-height: 0.85;
-  text-align: center;
-  text-transform: uppercase;
-}
-
 .footer-copyright {
-  position: absolute;
-  bottom: clamp(1.25rem, 3vw, 2rem);
-  left: 50%;
   margin: 0;
   font-size: 0.58rem;
   font-weight: 700;
@@ -278,7 +274,6 @@
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-  transform: translateX(-50%);
 }
 
 @media (min-width: 48rem) {
@@ -287,12 +282,6 @@
   }
   .collection-copy {
     order: -1;
-  }
-}
-
-@media (max-width: 47.99rem) {
-  .footer-coming {
-    font-size: clamp(3.5rem, 18vw, 5.5rem);
   }
 }
 

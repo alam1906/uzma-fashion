@@ -41,6 +41,276 @@ for (const device of [
   { name: 'desktop', width: 1366, height: 650, touch: false },
   { name: 'mobile', width: 393, height: 852, touch: true }
 ]) {
+  test(`collection title and description reveal after 70% card entry at ${device.name}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await settle(page);
+    const allLines = page.locator('[data-collection-text] .collection-reveal-line');
+    expect(await allLines.count()).toBeGreaterThan(6);
+    for (const line of await allLines.all()) await expect(line).toHaveCSS('opacity', '0');
+    await expect(page.locator('#collection-03 .collection-reveal-line')).toHaveText([
+      'New Store',
+      'New Collection',
+      'New Story'
+    ]);
+
+    for (const index of [0, 1, 2]) {
+      const frames = await page.evaluate(async (index) => {
+        const card = document.querySelectorAll('.collection-card')[index];
+        let crossed70 = false;
+        const visibility = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((entry) => entry.intersectionRatio >= 0.7)) crossed70 = true;
+          },
+          { threshold: [0, 0.7] }
+        );
+        visibility.observe(card);
+        const texts = Array.from(card.querySelectorAll('[data-collection-text]'));
+        const sample = () =>
+          texts.map((text) => {
+            const lines = Array.from(text.querySelectorAll('.collection-reveal-line'));
+            return {
+              opacity:
+                lines.reduce((sum, line) => sum + Number(getComputedStyle(line).opacity), 0) /
+                lines.length,
+              crossed70
+            };
+          });
+        const frames = [sample()];
+        const stage = document.querySelector('.collection-showcase')!;
+        const spacer = stage.parentElement!.getBoundingClientRect();
+        const distance = spacer.height - stage.getBoundingClientRect().height;
+        window.scrollTo(0, scrollY + spacer.top + (distance * index) / 3);
+        const started = performance.now();
+        while (performance.now() - started < 2400) {
+          await new Promise(requestAnimationFrame);
+          frames.push(sample());
+        }
+        visibility.disconnect();
+        return frames;
+      }, index);
+      for (const textIndex of [0, 1]) {
+        expect(frames[0][textIndex].opacity, `card ${index + 1}: initially hidden`).toBe(0);
+        expect(
+          frames.some(
+            (frame) => frame[textIndex].opacity > 0.01 && frame[textIndex].opacity < 0.99
+          ),
+          `card ${index + 1}: staggered reveal in progress`
+        ).toBe(true);
+        expect(frames.at(-1)![textIndex].opacity, `card ${index + 1}: fully revealed`).toBeCloseTo(
+          1,
+          3
+        );
+        for (let frameIndex = 1; frameIndex < frames.length; frameIndex++) {
+          expect(frames[frameIndex][textIndex].opacity).toBeGreaterThanOrEqual(
+            frames[frameIndex - 1][textIndex].opacity - 0.001
+          );
+          if (frames[frameIndex][textIndex].opacity > 0.01) {
+            expect(
+              frames[frameIndex][textIndex].crossed70,
+              'starts only after 70% card entry'
+            ).toBe(true);
+          }
+        }
+      }
+      // Upcoming cards must not reveal behind the current card before entry.
+      for (const nextCard of await page.locator('.collection-card').all()) {
+        const nextIndex = await nextCard.evaluate((card) =>
+          Array.from(card.parentElement!.children).indexOf(card)
+        );
+        if (nextIndex <= index) continue;
+        for (const line of await nextCard.locator('.collection-reveal-line').all()) {
+          await expect(line).toHaveCSS('opacity', '0');
+        }
+      }
+    }
+
+    await page.setViewportSize({ width: device.width - 12, height: device.height });
+    await page.waitForTimeout(800);
+    for (const line of await page.locator('.collection-reveal-line').all()) {
+      await expect(line).toHaveCSS('opacity', '1');
+    }
+    await expect(page.locator('#collection-03 .collection-reveal-line')).toHaveText([
+      'New Store',
+      'New Collection',
+      'New Story'
+    ]);
+    await page.screenshot({ path: `test-results/${device.name}-collection-text-reveal.png` });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('.collection-reveal-line')).toHaveCount(0);
+    await expect(page.locator('#collection-03')).toHaveText('New Store\nNew Collection\nNew Story');
+    await context.close();
+  });
+
+  test(`offer titles and descriptions reveal after 70% panel entry at ${device.name}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch
+    });
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    await settle(page);
+    const texts = page.locator('[data-offer-text]');
+    await expect(texts).toHaveCount(6);
+    const splitHeights = await texts.evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().height)
+    );
+    for (const line of await page.locator('.offer-reveal-line').all()) {
+      await expect(line).toHaveCSS('opacity', '0');
+    }
+
+    for (const index of [0, 1, 2]) {
+      const frames = await page.evaluate(async (index) => {
+        const panel = document.querySelectorAll('.offer-panel')[index];
+        let crossed70 = false;
+        const visibility = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((entry) => entry.intersectionRatio >= 0.7)) crossed70 = true;
+          },
+          { threshold: [0, 0.7] }
+        );
+        visibility.observe(panel);
+        const texts = Array.from(panel.querySelectorAll('[data-offer-text]'));
+        const sample = () =>
+          texts.map((text) => {
+            const lines = Array.from(text.querySelectorAll('.offer-reveal-line'));
+            return {
+              opacity:
+                lines.reduce((sum, line) => sum + Number(getComputedStyle(line).opacity), 0) /
+                lines.length,
+              crossed70
+            };
+          });
+        const frames = [sample()];
+        const stage = document.querySelector('.offer-stage')!;
+        const spacer = stage.parentElement!.getBoundingClientRect();
+        const distance = spacer.height - stage.getBoundingClientRect().height;
+        window.scrollTo(0, scrollY + spacer.top + (distance * index) / 2.3);
+        const started = performance.now();
+        while (performance.now() - started < 2400) {
+          await new Promise(requestAnimationFrame);
+          frames.push(sample());
+        }
+        visibility.disconnect();
+        return frames;
+      }, index);
+      for (const textIndex of [0, 1]) {
+        expect(frames[0][textIndex].opacity, `panel ${index + 1}: initially hidden`).toBe(0);
+        expect(
+          frames.some(
+            (frame) => frame[textIndex].opacity > 0.01 && frame[textIndex].opacity < 0.99
+          ),
+          `panel ${index + 1}: text reveal in progress`
+        ).toBe(true);
+        expect(frames.at(-1)![textIndex].opacity, `panel ${index + 1}: fully revealed`).toBeCloseTo(
+          1,
+          3
+        );
+        for (let frameIndex = 1; frameIndex < frames.length; frameIndex++) {
+          expect(frames[frameIndex][textIndex].opacity).toBeGreaterThanOrEqual(
+            frames[frameIndex - 1][textIndex].opacity - 0.001
+          );
+          if (frames[frameIndex][textIndex].opacity > 0.01) {
+            expect(
+              frames[frameIndex][textIndex].crossed70,
+              'starts only after 70% panel entry'
+            ).toBe(true);
+          }
+        }
+      }
+      for (const upcoming of await page.locator('.offer-panel').all()) {
+        const nextIndex = await upcoming.evaluate((panel) =>
+          Array.from(panel.parentElement!.children).indexOf(panel)
+        );
+        if (nextIndex <= index) continue;
+        for (const line of await upcoming.locator('.offer-reveal-line').all()) {
+          await expect(line).toHaveCSS('opacity', '0');
+        }
+      }
+    }
+
+    await page.screenshot({ path: `test-results/${device.name}-offer-text-reveal.png` });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('.offer-reveal-line')).toHaveCount(0);
+    const staticHeights = await texts.evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().height)
+    );
+    for (const [index, height] of splitHeights.entries()) {
+      expect(Math.abs(height - staticHeights[index]), 'reveal preserves text layout').toBeLessThan(
+        1
+      );
+    }
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await settle(page);
+    await jumpPinned(page, '.offer-stage', 2 / 2.3);
+    await page.setViewportSize({ width: device.width - 12, height: device.height });
+    await page.waitForTimeout(800);
+    for (const line of await page.locator('.offer-panel-three .offer-reveal-line').all()) {
+      await expect(line).toHaveCSS('opacity', '1');
+    }
+    await expect(page.locator('.offer-panel-three strong')).toHaveCSS(
+      'color',
+      'rgb(183, 110, 121)'
+    );
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test(`panel text remains hidden at 60% and reveals at 75% visibility at ${device.name}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch
+    });
+    const page = await context.newPage();
+    try {
+      for (const selector of ['.collection-card', '.offer-panel']) {
+        await page.goto('/');
+        await settle(page);
+        const panel = page.locator(selector).first();
+        for (const ratio of [0.6, 0.75]) {
+          await panel.evaluate((element, ratio) => {
+            const bounds = element.getBoundingClientRect();
+            window.scrollTo(0, scrollY + bounds.top - (innerHeight - bounds.height * ratio));
+          }, ratio);
+          await page.waitForTimeout(1400);
+          const actualRatio = await panel.evaluate(
+            (element) =>
+              new Promise<number>((resolve) => {
+                const observer = new IntersectionObserver((entries) => {
+                  resolve(entries[0].intersectionRatio);
+                  observer.disconnect();
+                });
+                observer.observe(element);
+              })
+          );
+          expect(actualRatio).toBeCloseTo(ratio, 1);
+          for (const line of await panel
+            .locator('.collection-reveal-line,.offer-reveal-line')
+            .all()) {
+            await expect(line).toHaveCSS('opacity', ratio < 0.7 ? '0' : '1');
+          }
+        }
+      }
+    } finally {
+      await context.close();
+    }
+  });
+
   test(`Welcome image and text remain concealed until their reveal at ${device.name}`, async ({
     browser
   }) => {
@@ -271,6 +541,8 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Grand Opening/);
   await expect(page.locator('.collection-card')).toHaveCount(3);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
+  await expect(page.locator('[data-offer-text]')).toHaveCount(6);
+  await expect(page.locator('.offer-reveal-line')).toHaveCount(0);
 
   // Decode every image, including covered and below-the-fold lazy images.
   const brokenImages = await page.locator('img').evaluateAll(async (images) => {
@@ -314,8 +586,11 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(page.getByRole('link', { name: 'Simpan tanggalnya' })).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(1400);
-  await expect(page.locator('.footer-coming')).toBeInViewport();
-  await expect(page.getByText('© 2026 Uzma Fashion', { exact: true })).toBeVisible();
+  await expect(page.getByText('Coming Soon', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('© 2026 UZMA FASHION', { exact: true })).toBeVisible();
+  expect(
+    await page.locator('.sticky-footer').evaluate((footer) => footer.clientHeight)
+  ).toBeLessThan(120);
   await page.screenshot({ path: 'test-results/desktop-footer.png' });
   expect(errors).toEqual([]);
   expect(missingResources).toEqual([]);
@@ -644,20 +919,18 @@ test('mobile footer stays at the end during scrolling and browser-height changes
       // Check immediately as well as after the resize has settled; a fixed
       // footer behind the whole page can leak through during either state.
       await expect(page.locator('.footer-copyright')).not.toBeInViewport();
-      await expect(page.locator('.footer-coming')).not.toBeInViewport();
       await page.waitForTimeout(400);
       await page.evaluate(() => window.scrollBy(0, 16));
       await page.waitForTimeout(250);
       await expect(page.locator('.footer-copyright')).not.toBeInViewport();
-      await expect(page.locator('.footer-coming')).not.toBeInViewport();
     }
   }
 
-  // The reveal still works at the actual bottom of the page, then disappears
+  // The compact footer appears at the actual bottom of the page, then disappears
   // again when returning to the hero (including with reduced motion).
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(page.locator('.footer-copyright')).toBeInViewport();
-  await expect(page.locator('.footer-coming')).toBeInViewport();
+  await expect(page.getByText('Coming Soon', { exact: true })).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator('.footer-copyright')).not.toBeInViewport();
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -784,11 +1057,6 @@ test('mobile footer stays attached to the document on every fast-scroll frame', 
           const surface = footer.getBoundingClientRect();
           const bounds = container.getBoundingClientRect();
           const viewport = window.visualViewport!;
-          if (
-            bounds.top >= viewport.offsetTop + viewport.height ||
-            bounds.bottom <= viewport.offsetTop
-          )
-            return;
           samples.push({
             gap: Math.max(
               0,
@@ -820,7 +1088,7 @@ test('mobile footer stays attached to the document on every fast-scroll frame', 
 
       expect(
         frames.length,
-        'footer is visible throughout the fast-scroll sequence'
+        'document boundary is checked throughout the fast-scroll sequence'
       ).toBeGreaterThanOrEqual(23);
       for (const [frame, sample] of frames.entries()) {
         expect(sample.gap, `${height}px, frame ${frame}: no exposed page background`).toBeLessThan(

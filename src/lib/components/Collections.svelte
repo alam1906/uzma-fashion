@@ -34,13 +34,13 @@
             <p class="collection-number">
               Collection {collection.id} / {String(collections.length).padStart(2, '0')}
             </p>
-            <h3 id={`collection-${collection.id}`} class="whitespace-pre-line">
+            <h3 id={`collection-${collection.id}`} class="whitespace-pre-line" data-collection-text>
               {collection.name}
             </h3>
             {#if collection.category}
               <span>{collection.category}</span>
             {/if}
-            <p class="collection-description">{collection.description}</p>
+            <p class="collection-description" data-collection-text>{collection.description}</p>
           </div>
         </article>
       {/each}
