@@ -1,7 +1,3 @@
-<script lang="ts">
-  import EditorialImage from './EditorialImage.svelte';
-</script>
-
 <section id="about" class="story" aria-labelledby="story-title">
   <div class="story-heading">
     <h2 id="story-title" class="statement">
@@ -12,12 +8,16 @@
   <div class="story-grid">
     <figure class="story-store" data-story-image>
       <div class="image-window">
-        <EditorialImage
-          name="grand-opening-store"
-          alt="Interior Uzma Fashion dengan koleksi busana dan pencahayaan hangat"
+        <img
+          src="/images/uzma-storefront-800.webp"
+          srcset="/images/uzma-storefront-480.webp 480w, /images/uzma-storefront-800.webp 800w, /images/uzma-storefront-1108.webp 1108w"
+          alt="Tampak depan toko Uzma Fashion dengan papan nama dan pencahayaan hangat"
           sizes="(min-width: 800px) 50vw, 100vw"
           class="story-parallax"
-          large
+          width="1108"
+          height="1600"
+          loading="lazy"
+          decoding="async"
         />
       </div>
       <figcaption>A space for quiet elegance</figcaption>

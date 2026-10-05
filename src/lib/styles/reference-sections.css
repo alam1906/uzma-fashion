@@ -261,8 +261,10 @@
   place-items: center;
   overflow: hidden;
   padding: 2rem var(--page-gutter);
-  background: var(--rose);
-  color: var(--ocean);
+  background:
+    radial-gradient(ellipse at 50% 55%, #164653 0%, transparent 62%),
+    linear-gradient(145deg, #081d29, #092d39 55%, #061c29);
+  color: var(--pearl);
   pointer-events: none;
 }
 

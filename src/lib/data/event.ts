@@ -9,6 +9,11 @@ export const event = {
   theme: 'Lulu’ul de Lumière'
 } as const;
 
+export const storeLocation = {
+  embedUrl:
+    'https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3958.2966857308547!2d107.89850997499917!3d-7.2069544927986176!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zN8KwMTInMjUuMCJTIDEwN8KwNTQnMDMuOSJF!5e0!3m2!1sid!2sid!4v1791242420565!5m2!1sid!2sid'
+} as const;
+
 export const collections = [
   {
     id: '01',

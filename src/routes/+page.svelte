@@ -8,6 +8,7 @@
   import Collections from '#lib/components/Collections.svelte';
   import Offers from '#lib/components/Offers.svelte';
   import Invitation from '#lib/components/Invitation.svelte';
+  import Location from '#lib/components/Location.svelte';
   import Footer from '#lib/components/Footer.svelte';
 
   let root: HTMLDivElement;
@@ -67,6 +68,7 @@
           <Collections />
           <Offers />
           <Invitation />
+          <Location />
         </div>
       </main>
       <div class="footer-reveal">
