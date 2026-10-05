@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { afterNavigate } from '$app/navigation';
   import { event } from '#lib/data/event.js';
   import Header from '#lib/components/Header.svelte';
   import Hero from '#lib/components/Hero.svelte';
@@ -10,6 +11,16 @@
   import Footer from '#lib/components/Footer.svelte';
 
   let root: HTMLDivElement;
+
+  afterNavigate(({ type }) => {
+    const navigation = performance.getEntriesByType('navigation')[0] as
+      PerformanceNavigationTiming | undefined;
+    if (type === 'enter' && navigation?.type === 'reload') {
+      // Kit also restores its saved scroll during hydration, independently
+      // of the browser. Reset it before the async motion module initializes.
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  });
 
   onMount(() => {
     let disposed = false;

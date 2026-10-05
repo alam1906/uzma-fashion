@@ -4,6 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f2eb" />
+    <script>
+      // A reload restarts the invitation; normal links and history navigation
+      // keep their usual behavior. Run before native hash/scroll restoration.
+      if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+        history.scrollRestoration = 'manual';
+        if (location.hash) {
+          history.replaceState(history.state, '', location.pathname + location.search);
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      }
+    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link
       rel="preload"

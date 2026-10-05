@@ -23,6 +23,41 @@ async function jumpPinned(page: Page, selector: string, progress: number) {
   await page.waitForTimeout(2200);
 }
 
+async function expectHeroLogoCentered(page: Page) {
+  const frame = (await page.locator('.hero-visual').boundingBox())!;
+  const logo = (await page.locator('.hero-brand-mark').boundingBox())!;
+  expect(Math.abs(logo.x + logo.width / 2 - (frame.x + frame.width / 2))).toBeLessThan(1.5);
+  expect(Math.abs(logo.y + logo.height / 2 - (frame.y + frame.height / 2))).toBeLessThan(1.5);
+  await expect(page.locator('.hero-brand-mark img')).toHaveAttribute(
+    'src',
+    '/logo-uzma-transparent.png'
+  );
+}
+
+async function expectHeroLogoRightAligned(page: Page) {
+  const frame = (await page.locator('.hero-visual').boundingBox())!;
+  const logo = (await page.locator('.hero-brand-mark').boundingBox())!;
+  const copy = (await page.locator('.hero-reveal-copy').boundingBox())!;
+  const stacked = await page
+    .locator('.hero-content')
+    .evaluate((el) => getComputedStyle(el).flexDirection === 'column');
+  if (stacked) {
+    expect(Math.abs(logo.x + logo.width / 2 - (frame.x + frame.width / 2))).toBeLessThan(1.5);
+    expect(Math.abs(copy.x + copy.width / 2 - (frame.x + frame.width / 2))).toBeLessThan(1.5);
+    expect(logo.y + logo.height).toBeLessThan(copy.y);
+    expect(
+      Math.abs((logo.y + copy.y + copy.height) / 2 - (frame.y + frame.height / 2))
+    ).toBeLessThan(1.5);
+  } else {
+    expect(Math.abs(logo.y + logo.height / 2 - (frame.y + frame.height / 2))).toBeLessThan(1.5);
+    expect(Math.abs(copy.y + copy.height / 2 - (frame.y + frame.height / 2))).toBeLessThan(1.5);
+    expect(Math.abs(copy.x - frame.x - (frame.x + frame.width - logo.x - logo.width))).toBeLessThan(
+      1.5
+    );
+    expect(logo.x).toBeGreaterThan(copy.x + copy.width);
+  }
+}
+
 async function preserveMobileLayoutViewport(page: Page) {
   // Real browser controls resize the visible viewport while svh/lvh remain
   // unchanged. A plain setViewportSize changes all three and misses this bug.
@@ -542,7 +577,10 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(page.locator('.collection-card')).toHaveCount(3);
   await expect(page.locator('.offer-panel')).toHaveCount(3);
   await expect(page.locator('[data-offer-text]')).toHaveCount(6);
-  await expect(page.locator('.offer-reveal-line')).toHaveCount(0);
+  expect(await page.locator('.offer-reveal-line').count()).toBeGreaterThan(0);
+  expect(
+    await page.locator('.hero-backdrop').evaluate((image: HTMLImageElement) => image.currentSrc)
+  ).toContain('/images/uzma-hero-scene-desktop-');
 
   // Decode every image, including covered and below-the-fold lazy images.
   const brokenImages = await page.locator('img').evaluateAll(async (images) => {
@@ -596,9 +634,50 @@ test('content, images, countdown, and footer work in the production build', asyn
   expect(missingResources).toEqual([]);
 });
 
+for (const touch of [false, true]) {
+  test(`reload restarts the hero at the top on ${touch ? 'mobile' : 'desktop'}`, async ({
+    browser
+  }) => {
+    const context = await browser.newContext({
+      viewport: touch ? { width: 393, height: 852 } : { width: 1440, height: 1000 },
+      isMobile: touch,
+      hasTouch: touch
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await settle(page);
+    await jumpPinned(page, '.hero-stage', 0.6);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+    await page.reload();
+    await settle(page);
+    expect(await page.evaluate(() => window.scrollY)).toBeLessThan(1);
+    await expectHeroLogoCentered(page);
+    await expect(page.locator('.hero-reveal-copy')).toHaveCSS('visibility', 'hidden');
+    await expect(page.locator('.site-header')).toBeInViewport();
+
+    // Reloading a menu destination must restart too, but menu clicks still work.
+    if (touch) await page.getByRole('button', { name: 'Buka menu' }).click();
+    await page
+      .getByRole('navigation', { name: touch ? 'Navigasi ponsel' : 'Navigasi utama' })
+      .getByRole('link', { name: 'Tentang' })
+      .click();
+    await expect(page).toHaveURL(/#about$/);
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+    await page.reload();
+    await settle(page);
+    expect(new URL(page.url()).hash).toBe('');
+    expect(await page.evaluate(() => window.scrollY)).toBeLessThan(1);
+    await expectHeroLogoCentered(page);
+    await expect(page.locator('.site-header')).toBeInViewport();
+    await context.close();
+  });
+}
+
 test('smooth scrolling holds the expanded hero while Welcome covers it', async ({ page }) => {
   await page.goto('/');
   await settle(page);
+  await expectHeroLogoCentered(page);
   await expect(page.locator('#smooth-wrapper')).toHaveCSS('position', 'fixed');
   const initialWidth = await page
     .locator('.hero-visual')
@@ -642,6 +721,7 @@ test('smooth scrolling holds the expanded hero while Welcome covers it', async (
     expect(Math.abs(frame!.y)).toBeLessThan(1.5);
     expect(Math.abs(frame!.width - size.width)).toBeLessThan(1.5);
     expect(Math.abs(frame!.height - size.height)).toBeLessThan(1.5);
+    await expectHeroLogoRightAligned(page);
     const date = await page.locator('.hero-reveal-date').boundingBox();
     expect(date!.y + date!.height).toBeLessThan(size.height);
   }
@@ -687,9 +767,13 @@ test.describe('touchscreen hero', () => {
       await page.goto('/');
       await settle(page);
       await expect(page.locator('.pin-spacer')).toHaveCount(3);
+      expect(
+        await page.locator('.hero-backdrop').evaluate((image: HTMLImageElement) => image.currentSrc)
+      ).toMatch(/\/images\/uzma-hero-scene-\d+\.webp$/);
       const initial = await page.locator('.hero-visual').boundingBox();
       expect(initial!.width).toBeCloseTo(size.width * 0.74, 0);
       expect(initial!.height).toBeCloseTo(size.height * 0.64, 0);
+      await expectHeroLogoCentered(page);
       await page.screenshot({ path: `test-results/mobile-${size.width}-initial.png` });
 
       await jumpPinned(page, '.hero-stage', 0.5 / 2.15);
@@ -704,6 +788,7 @@ test.describe('touchscreen hero', () => {
       expect(Math.abs(expanded!.y)).toBeLessThan(1.5);
       expect(expanded!.width).toBeCloseTo(size.width, 0);
       expect(expanded!.height).toBeCloseTo(size.height, 0);
+      await expectHeroLogoRightAligned(page);
       await expect(page.locator('.hero-reveal-copy')).toHaveCSS('visibility', 'visible');
       const date = await page.locator('.hero-reveal-date').boundingBox();
       expect(date!.x + date!.width).toBeLessThan(size.width);
@@ -724,6 +809,7 @@ test.describe('touchscreen hero', () => {
       const restored = await page.locator('.hero-visual').boundingBox();
       expect(restored!.width).toBeCloseTo(initial!.width, 0);
       expect(restored!.x).toBeCloseTo(initial!.x, 0);
+      await expectHeroLogoCentered(page);
       expect(await page.evaluate(() => document.body.scrollWidth)).toBe(size.width);
 
       // Browser toolbar changes are smaller than an orientation change.
@@ -732,6 +818,7 @@ test.describe('touchscreen hero', () => {
       await page.waitForTimeout(500);
       await jumpPinned(page, '.hero-stage', 1.15 / 2.15);
       expect((await page.locator('.hero-visual').boundingBox())!.height).toBeCloseTo(shorter, 0);
+      await expectHeroLogoRightAligned(page);
       const dateAfterResize = await page.locator('.hero-reveal-date').boundingBox();
       expect(dateAfterResize!.y + dateAfterResize!.height).toBeLessThan(shorter);
 
@@ -775,7 +862,8 @@ test('GSAP smooths native scrolling and anchor links reach the correct sections'
   await expect(page.locator('#about')).toBeFocused();
   await page.reload();
   await settle(page);
-  expect(Math.abs((await page.locator('#about').boundingBox())!.y)).toBeLessThan(2);
+  expect(await page.evaluate(() => window.scrollY)).toBeLessThan(1);
+  await expectHeroLogoCentered(page);
 });
 
 test('mobile navigation, card stack, and countdown remain usable', async ({ page }) => {

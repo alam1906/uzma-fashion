@@ -1,0 +1,15 @@
+Tool: built-in imagegen, not CLI/API fallback.
+Edit targets: static/images/uzma-hero-logo.png (portrait) and static/images/uzma-hero-logo-desktop.png (landscape).
+Final masters: static/images/uzma-hero-scene.png (941x1672) and static/images/uzma-hero-scene-desktop.png (1672x941).
+Website variants: scene-480/800/1120.webp and scene-desktop-800/1440/1672.webp, encoded with cwebp at quality 86.
+The logo is now the unchanged navbar asset /logo-uzma-transparent.png, positioned and animated as a separate HTML element.
+
+Final prompt template, used in two built-in edit calls:
+Orientation for call 1: portrait 9:16.
+Orientation for call 2: landscape 16:9.
+
+Use case: precise-object-edit.
+Asset type: clean [orientation] Uzma Fashion website hero background.
+Image 1 is the edit target. Remove ONLY the entire bronze logo/monogram UF and all the words "Uzma Fashion" from the image. Seamlessly reconstruct the dark navy atmospheric background and underwater light in that area so there is no outline, ghost, gold speck, lettering or logo remnant. Do NOT replace the removed logo with another object.
+Preserve everything else: exact [orientation] framing, luminous rose-gold pearl at the right, rocks, rippled water reflections, translucent edge silks, light beams, blue palette and original lighting. Keep the same composition and proportions. Do not crop or move the pearl or silks.
+Output edge-to-edge opaque artwork. No text of any kind, no logo, no person, no new ornament, no UI, no border, no watermark. Change only the logo area; keep the rest unchanged.

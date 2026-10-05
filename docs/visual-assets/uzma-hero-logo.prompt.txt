@@ -1,0 +1,24 @@
+Tool: built-in imagegen (not CLI/API fallback).
+Inputs: static/images/uzma-hero-800.webp (edit target), static/logo-uzma-transparent.png (existing logo insert).
+Outputs: static/images/uzma-hero-logo.png (941x1672), static/images/uzma-hero-logo-desktop.png (1672x941).
+Responsive WebP variants encoded with cwebp quality 86. Original inputs and navbar logo retained unchanged.
+Invitation/date remain HTML so screenshot text is not baked into the artwork.
+
+Final portrait prompt:
+Use case: compositing.
+Asset type: Uzma Fashion website hero background, portrait 9:16.
+Image 1 is the edit target: original navy underwater silk/pearl scene with a woman.
+Image 2 is the existing official Uzma Fashion logo to insert; it is NOT a style reference for a new logo.
+Primary request: remove the woman completely, including face, hijab, body, hands and entire worn dress/train, and seamlessly reconstruct the underwater rocky floor and dark atmospheric background where she stood. Keep the luminous rose-gold pearl on the right, translucent flowing fabric at the frame edges, navy blue shadows, reflected water, original lighting and camera framing. Do not leave a human silhouette, mannequin or garment-shaped ghost.
+Replace the model with the EXACT existing logo from Image 2, preserving its UF letterforms, the words "Uzma Fashion", arrangement, rose-gold/bronze colors and gradients. No redesign, ribbons, new ornaments or recoloring. Integrate it as a crisp, front-facing brand mark with transparent surroundings, not a rectangular badge. Center the logo horizontally in the upper-third of the scene: about 65% of canvas width, center at approximately 28% canvas height, preserving its native aspect ratio. It must be readable against the dark navy background and not overlap the luminous pearl.
+Keep the lower-left and lower half atmospheric and sufficiently dark for the website's existing HTML invitation overlay.
+Constraints: edit only the subject and reconstruct the uncovered background; do not change the scene's palette or pearl. Output edge-to-edge portrait artwork, no border or phone/browser UI. No people. No extra words, slogan, Grand Opening, dates, invitation text, or watermark. The only text within the artwork is the exact "Uzma Fashion" lettering belonging to the provided logo.
+
+Final desktop prompt:
+Use case: compositing.
+Asset type: responsive desktop version of the Uzma Fashion website hero, landscape 16:9.
+Image 1: the approved portrait background, already without a person. Preserve its underwater navy-blue environment, translucent silk at the frame edges, rose-gold luminous pearl, rocky reflected water, and lighting.
+Image 2: the exact existing official UF / "Uzma Fashion" logo, NOT a reference for designing a new logo.
+Primary request: adapt Image 1 to an edge-to-edge landscape 16:9 composition by extending the background horizontally, maintaining the same scene, palette and natural detail. Reposition the single logo to the right half: its center at 70% of canvas width and 40% of canvas height, its width approximately 28% of the canvas. Use the exact logo from Image 2, preserving its existing serif letterforms, UF structure, wordmark arrangement, bronze/rose-gold gradient and texture, without redesign. No rectangle behind the logo. Remove its former central location cleanly so there is only ONE logo.
+Keep the luminous pearl in the lower-right below the logo. Preserve generous uninterrupted dark navy negative space in the left 45% for the existing HTML invitation title, never bake that title into the artwork. The corner silks and rocks frame the image without filling the negative space.
+Constraints: no people, mannequins, body silhouettes, dress or train. No invitation text, no dates, no slogan, no watermark, no UI or border. The only text is the exact existing "Uzma Fashion" logo wordmark. Keep the same original brand colors and atmosphere; do not make a new logo.

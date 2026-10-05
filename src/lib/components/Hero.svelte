@@ -11,24 +11,37 @@
 
     <div class="hero-depth">
       <figure class="hero-visual">
-        <EditorialImage
-          name="grand-opening-store"
-          alt="Interior butik Uzma Fashion dengan koleksi busana navy, ivory, dan rose"
-          width={800}
-          height={1000}
-          sizes="100vw"
-          priority
-          large
-        />
+        <picture>
+          <source
+            media="(min-width: 900px)"
+            srcset="/images/uzma-hero-scene-desktop-800.webp 800w, /images/uzma-hero-scene-desktop-1440.webp 1440w, /images/uzma-hero-scene-desktop-1672.webp 1672w"
+            sizes="100vw"
+          />
+          <EditorialImage
+            name="uzma-hero-scene"
+            alt="Sutra navy, mutiara bercahaya, dan pantulan air"
+            width={941}
+            height={1672}
+            sizes="100vw"
+            priority
+            large
+            class="hero-backdrop"
+          />
+        </picture>
         <div class="hero-shade"></div>
-        <div class="hero-reveal-placement" aria-hidden="true">
-          <div class="hero-reveal-copy">
-            <p class="eyebrow">You are invited to our</p>
-            <p class="hero-reveal-title">Grand<br /><em>Opening.</em></p>
-            <p class="hero-reveal-date mt-6 text-sm tracking-[0.16em]">
-              {event.date} <span class="mx-3">·</span>
-              {event.time}
-            </p>
+        <div class="hero-content" aria-hidden="true">
+          <div class="hero-brand-mark">
+            <img src="/logo-uzma-transparent.png" alt="" width="1737" height="905" />
+          </div>
+          <div class="hero-reveal-placement">
+            <div class="hero-reveal-copy">
+              <p class="eyebrow">You are invited to our</p>
+              <p class="hero-reveal-title">Grand<br /><em>Opening.</em></p>
+              <p class="hero-reveal-date mt-6 text-sm tracking-[0.16em]">
+                {event.date} <span class="mx-3">·</span>
+                {event.time}
+              </p>
+            </div>
           </div>
         </div>
       </figure>

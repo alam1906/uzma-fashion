@@ -146,8 +146,16 @@ export function createLandingMotion(root: HTMLElement): () => void {
         const hero = root.querySelector<HTMLElement>('.hero')!;
         const stage = root.querySelector<HTMLElement>('.hero-stage')!;
         const frame = root.querySelector<HTMLElement>('.hero-visual')!;
+        const brand = frame.querySelector<HTMLElement>('.hero-brand-mark')!;
+        const content = frame.querySelector<HTMLElement>('.hero-content')!;
+        const placement = frame.querySelector<HTMLElement>('.hero-reveal-placement')!;
         const initialFrame = (property: string) =>
           getComputedStyle(stage).getPropertyValue(`--hero-frame-${property}`).trim();
+        const stacked = () => getComputedStyle(content).flexDirection === 'column';
+        const contentWidth = () =>
+          stacked() ? stage.offsetWidth * 0.86 : Math.min(stage.offsetWidth * 0.72, 1200);
+        const initialBrandWidth = () =>
+          stage.offsetWidth * (parseFloat(initialFrame('width')) / 100) * 0.65;
 
         // Let Welcome enter over the pinned frame during its final viewport of travel.
         gsap.set('.page-foreground', { marginTop: 'calc(0px - var(--scene-height))' });
@@ -168,6 +176,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
         });
 
         heroTimeline
+          .set(content, { width: contentWidth, justifyContent: 'space-between' }, 0)
           .to('.hero-title', { opacity: 0, ease: 'none', duration: 0.6 }, 0)
           .fromTo(
             frame,
@@ -179,7 +188,29 @@ export function createLandingMotion(root: HTMLElement): () => void {
             { width: '100%', height: '100%', top: 0, ease: 'power1.inOut', duration: 1 },
             0
           )
-          .to('.hero-visual > img', { objectPosition: '50% 16%', ease: 'none', duration: 1 }, 0)
+          .to('.hero-backdrop', { objectPosition: '50% 16%', ease: 'none', duration: 1 }, 0)
+          .fromTo(
+            brand,
+            {
+              width: initialBrandWidth,
+              x: () => (stacked() ? 0 : (initialBrandWidth() - contentWidth()) / 2),
+              y: () =>
+                stacked()
+                  ? (placement.offsetHeight + parseFloat(getComputedStyle(content).gap)) / 2
+                  : 0,
+              xPercent: 0,
+              yPercent: 0
+            },
+            {
+              width: () =>
+                Math.min(stage.offsetWidth * (stacked() ? 0.62 : 0.28), stacked() ? 300 : 480),
+              x: 0,
+              y: 0,
+              duration: 1,
+              ease: 'power1.inOut'
+            },
+            0
+          )
           .to('.hero-shade', { backgroundColor: 'rgba(0, 19, 28, 0.26)', duration: 0.4 }, 0.45)
           .to('.hero-reveal-copy', { autoAlpha: 1, y: 0, ease: 'power2.out', duration: 0.4 }, 0.58)
           // Expansion takes 1.15 viewports; hold still for the covering transition.
