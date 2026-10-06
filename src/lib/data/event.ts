@@ -30,7 +30,7 @@ export const collections = [
   },
   {
     id: '02',
-    name: 'The Spotligh Is On',
+    name: 'The Spotlight Is On',
     category: 'Signature Detail',
     imageCaption: 'Fashionable & Mewah',
     description:

@@ -544,13 +544,14 @@
   .collection-description {
     max-width: none;
     margin-top: 0.85rem;
-    line-height: 1.5;
+    font-size: clamp(0.875rem, 3.8vw, 1rem);
+    line-height: 1.6;
   }
 
   .collection-showcase.is-animated .collection-description {
-    margin-top: 1.5rem;
-    font-size: clamp(0.61rem, 2.6vw, 0.83rem);
-    line-height: 1.55;
+    margin-top: 1.25rem;
+    font-size: clamp(0.875rem, 3.8vw, 1rem);
+    line-height: 1.6;
   }
 
   .collection-showcase.is-animated .collection-image figcaption {
