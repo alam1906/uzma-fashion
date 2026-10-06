@@ -637,7 +637,7 @@ test('content, images, countdown, and footer work in the production build', asyn
   await expect(page.getByRole('heading', { name: 'A new beginning.' })).toBeVisible();
   await expect(page.locator('.countdown-date time')).toHaveAttribute(
     'datetime',
-    '2026-10-08T10:00:00+07:00'
+    '2026-10-08T09:00:00+07:00'
   );
   await page.waitForTimeout(1000);
   await page.screenshot({ path: 'test-results/desktop-countdown.png' });
@@ -1467,7 +1467,7 @@ test('reduced motion skips pinning and responds when the preference changes', as
 test('countdown reaches the opening without negative values or continuing timers', async ({
   page
 }) => {
-  await page.clock.install({ time: new Date('2026-10-08T09:59:58+07:00') });
+  await page.clock.install({ time: new Date('2026-10-08T08:59:58+07:00') });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('.countdown-value').last()).toHaveText(/0[12]/);
@@ -1511,7 +1511,7 @@ test('countdown motion pauses offscreen and cleans up for reduced motion', async
 test('countdown shows a stable opening message when visited after the deadline', async ({
   page
 }) => {
-  await page.clock.install({ time: new Date('2026-10-08T10:05:00+07:00') });
+  await page.clock.install({ time: new Date('2026-10-08T09:05:00+07:00') });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.getByRole('timer')).toHaveCount(0);

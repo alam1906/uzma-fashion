@@ -1,11 +1,11 @@
 export const event = {
   brand: 'Uzma Fashion',
   title: 'Grand Opening Uzma Fashion',
-  startsAt: '2026-10-08T10:00:00+07:00',
+  startsAt: '2026-10-08T09:00:00+07:00',
   date: '8 Oktober 2026',
   shortDate: '08.10.26',
   day: 'Kamis',
-  time: '10.00 WIB',
+  time: '09.00 WIB',
   theme: 'Lulu’ul de Lumière'
 } as const;
 
@@ -109,7 +109,7 @@ const calendar = [
   'BEGIN:VALARM',
   'TRIGGER:-P1D',
   'ACTION:DISPLAY',
-  'DESCRIPTION:Besok Grand Opening Uzma Fashion pukul 10.00 WIB.',
+  `DESCRIPTION:Besok Grand Opening Uzma Fashion pukul ${event.time}.`,
   'END:VALARM',
   'END:VEVENT',
   'END:VCALENDAR',

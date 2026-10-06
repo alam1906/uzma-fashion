@@ -42,7 +42,7 @@ Versi diperiksa langsung di npm saat implementasi. SvelteKit 3 masih prerelease;
 
 ## Konten dan perilaku
 
-Data yang dapat diedit berada di `src/lib/data/event.ts`. Tanggal acara menggunakan zona waktu eksplisit: **8 Oktober 2026, 10.00 WIB**. Countdown dimulai di browser agar tidak menyebabkan perbedaan SSR dan berhenti ketika acara dimulai.
+Data yang dapat diedit berada di `src/lib/data/event.ts`. Tanggal acara menggunakan zona waktu eksplisit: **8 Oktober 2026, 09.00 WIB**. Countdown dimulai di browser agar tidak menyebabkan perbedaan SSR dan berhenti ketika acara dimulai.
 
 Alamat, peta, kontak, serta akun sosial belum tersedia di website sumber, sehingga tidak ditambahkan sebagai data rekaan. Jika nanti tersedia, masukkan data sebenarnya sebelum menambahkan CTA lokasi atau kontak.
 
@@ -54,7 +54,7 @@ Animasi utama di `src/lib/motion/landing.ts`:
 - Cerita: teks muncul mengikuti scroll dan foto bergerak dengan parallax ringan.
 - Koleksi: tiga kartu bertumpuk, dengan teks di kiri dan gambar di kanan pada desktop. Tombol panah, Home, dan End dapat digunakan ketika area koleksi difokuskan.
 - Promo: tiga panel bergantian dari kanan lalu kiri sesuai referensi, diikuti ketentuan promo. Judul dan deskripsi kartu koleksi maupun panel promo mulai text reveal bersama setelah minimal 70% area kartu/panel terlihat di viewport, dengan [SplitText](https://gsap.com/docs/v3/Plugins/SplitText/) yang mengikuti perubahan lebar teks tanpa mengubah warna atau tata letak.
-- Countdown: empat dial beraksen rose gold pada latar ocean blue, angka berganti lembut, reveal berurutan, dan orbit mutiara yang berhenti ketika section/tab tidak terlihat. Dua kolom pada ponsel; tanggal 8 Oktober 2026 pukul 10.00 WIB tetap tampil tanpa JavaScript. Animasi mengikuti reduced-motion menggunakan [GSAP matchMedia](https://gsap.com/docs/v3/GSAP/gsap.matchMedia%28%29/) dan [context cleanup](https://gsap.com/docs/v3/GSAP/gsap.context%28%29/). Versi sebelum perombakan tersimpan di tag lokal `checkpoint-before-countdown-redesign-2026-10-03` (`08839ddfca02c936da7987d3f56913a75dcb0428`); pulihkan hanya perubahan terkait bila diperlukan.
+- Countdown: empat dial beraksen rose gold pada latar ocean blue, angka berganti lembut, reveal berurutan, dan orbit mutiara yang berhenti ketika section/tab tidak terlihat. Dua kolom pada ponsel; tanggal 8 Oktober 2026 pukul 09.00 WIB tetap tampil tanpa JavaScript. Animasi mengikuti reduced-motion menggunakan [GSAP matchMedia](https://gsap.com/docs/v3/GSAP/gsap.matchMedia%28%29/) dan [context cleanup](https://gsap.com/docs/v3/GSAP/gsap.context%28%29/). Versi sebelum perombakan tersimpan di tag lokal `checkpoint-before-countdown-redesign-2026-10-03` (`08839ddfca02c936da7987d3f56913a75dcb0428`); pulihkan hanya perubahan terkait bila diperlukan.
 - Footer: copyright “© 2026 UZMA FASHION” pada latar rose menjadi penutup ringkas dalam alur dokumen, tanpa section Coming Soon, tinggi fullscreen, translasi footer, atau koreksi posisi per-frame. Animasi hero, koleksi, dan promo tetap dipertahankan.
 - Batas scroll mobile memakai `overscroll-behavior-y: none` pada root agar momentum tidak memantulkan halaman dan membuka latar kosong setelah footer. Ini juga menonaktifkan gesture pull-to-refresh bawaan; scroll biasa dan perubahan bilah browser tetap native. [Referensi Chrome](https://developer.chrome.com/blog/overscroll-behavior).
 - Reduced motion menonaktifkan smoothing, pinning, dan animasi nonesensial. Konten dirender secara statis dan tetap terbaca tanpa JavaScript.
