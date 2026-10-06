@@ -449,7 +449,7 @@ for (const device of [
     await context.close();
   });
 
-  test(`UZMA remains behind the opaque hero image during entrance and scroll at ${device.name}`, async ({
+  test(`hero title stays inside the opaque image during entrance and scroll at ${device.name}`, async ({
     browser
   }) => {
     const context = await browser.newContext({
@@ -464,10 +464,10 @@ for (const device of [
       const sample = () => {
         const stage = document.querySelector('.hero-stage');
         const title = document.querySelector('.hero-title');
-        const depth = document.querySelector('.hero-depth');
         const image = document.querySelector('.hero-visual');
-        if (stage && title && depth && image) {
+        if (stage && title && image) {
           const bounds = image.getBoundingClientRect();
+          const titleBounds = title.getBoundingClientRect();
           const x = bounds.left + bounds.width / 2;
           const y = bounds.top + bounds.height * 0.4;
           if (x > 0 && x < innerWidth && y > 0 && y < innerHeight) {
@@ -475,7 +475,12 @@ for (const device of [
               opacity: Number(getComputedStyle(image).opacity),
               ordered:
                 getComputedStyle(stage).isolation === 'isolate' &&
-                Number(getComputedStyle(depth).zIndex) > Number(getComputedStyle(title).zIndex),
+                image.contains(title) &&
+                Number(getComputedStyle(title).zIndex) > 0 &&
+                titleBounds.left >= bounds.left - 1 &&
+                titleBounds.right <= bounds.right + 1 &&
+                titleBounds.top >= bounds.top &&
+                titleBounds.bottom <= bounds.bottom,
               imageOnTop: Boolean(document.elementFromPoint(x, y)?.closest('.hero-visual'))
             });
           }
@@ -486,9 +491,24 @@ for (const device of [
     });
     await page.goto('/');
     await settle(page);
-    await jumpPinned(page, '.hero-stage', 0.35);
+    const title = page.locator('.hero-title');
+    const text = title.locator('span');
+    const initialText = (await text.boundingBox())!;
+    let previousWidth = initialText.width;
+    for (const progress of [0.25, 0.5]) {
+      await jumpPinned(page, '.hero-stage', progress);
+      await expect(title).toHaveCSS('opacity', '1');
+      await expect(text).toHaveCSS('opacity', '1');
+      const bounds = (await text.boundingBox())!;
+      const image = (await page.locator('.hero-visual').boundingBox())!;
+      expect(bounds.width).toBeGreaterThan(previousWidth);
+      expect(bounds.x).toBeGreaterThanOrEqual(image.x);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(image.x + image.width);
+      previousWidth = bounds.width;
+    }
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(1400);
+    expect((await text.boundingBox())!.width).toBeCloseTo(initialText.width, 0);
     const frames = await page.evaluate(
       () =>
         (
@@ -504,7 +524,7 @@ for (const device of [
     ).toBe(true);
     expect(
       frames.every((frame) => frame.ordered),
-      'explicit image layer above UZMA'
+      'hero title is overlaid within the image bounds'
     ).toBe(true);
     expect(
       frames.every((frame) => frame.imageOnTop),

@@ -5,10 +5,6 @@
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero-stage">
-    <h1 id="hero-title" class="hero-title" aria-label="Uzma Fashion — Grand Opening">
-      <span aria-hidden="true">UZMA</span>
-    </h1>
-
     <div class="hero-depth">
       <figure class="hero-visual">
         <picture>
@@ -29,6 +25,13 @@
           />
         </picture>
         <div class="hero-shade"></div>
+        <h1
+          id="hero-title"
+          class="hero-title"
+          aria-label={`${event.theme} — Uzma Fashion Grand Opening`}
+        >
+          <span aria-hidden="true">{event.theme}</span>
+        </h1>
         <div class="hero-content" aria-hidden="true">
           <div class="hero-brand-mark">
             <img src="/logo-uzma-transparent.png" alt="" width="1737" height="905" />

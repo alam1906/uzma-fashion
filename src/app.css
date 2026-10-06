@@ -168,6 +168,7 @@
     border-bottom: 1px solid #183c3e24;
   }
   .brand-logo {
+    position: relative;
     display: flex;
     width: clamp(7.5rem, 10vw, 9rem);
     flex-shrink: 0;
@@ -229,16 +230,19 @@
   }
   .hero-title {
     position: absolute;
-    z-index: 0;
-    top: 20%;
+    z-index: 2;
+    top: 9%;
     left: 0;
     width: 100%;
     text-align: center;
     font-family: var(--font-display);
-    font-size: clamp(230px, 30.3vw, 520px);
-    line-height: 0.92;
-    letter-spacing: 0.015em;
+    padding-inline: 1rem;
+    font-size: clamp(1.25rem, 2.2vw, 2.25rem);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
     font-weight: 400;
+    color: var(--color-paper);
+    text-shadow: 0 2px 16px #031b2b80;
   }
   .hero-depth {
     position: absolute;
@@ -258,6 +262,7 @@
   }
   .hero-title > span {
     display: inline-block;
+    transform-origin: 50% 0%;
   }
   .hero-visual > picture {
     display: block;
@@ -281,6 +286,7 @@
     pointer-events: none;
   }
   .hero-brand-mark {
+    position: relative;
     order: 2;
     flex-shrink: 0;
     width: calc(65% / 0.86);
@@ -289,6 +295,28 @@
     width: 100%;
     height: auto;
     object-fit: contain;
+  }
+
+  @supports (mask-image: url('/logo-uzma-transparent.png')) {
+    .brand-logo::after,
+    .hero-brand-mark::after {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        125deg,
+        #8e4d59 2%,
+        #c17d87 18%,
+        #f8d8d1 32%,
+        #b76e79 48%,
+        #e5b4aa 63%,
+        #fbe3dc 73%,
+        #a86270 89%,
+        #d89ca4
+      );
+      mask: url('/logo-uzma-transparent.png') center / contain no-repeat;
+      content: '';
+      pointer-events: none;
+    }
   }
   .hero-shade {
     position: absolute;
@@ -538,8 +566,7 @@
     max-height: 900px;
   }
   .hero-title {
-    font-size: 31vw;
-    top: 15%;
+    font-size: clamp(1.125rem, 3.3vw, 1.75rem);
   }
 }
 
@@ -555,8 +582,7 @@
     max-height: none;
   }
   .hero-title {
-    font-size: 32vw;
-    top: 6%;
+    font-size: clamp(1.125rem, 5.5vw, 1.75rem);
     letter-spacing: -0.015em;
   }
   .hero-visual-caption {
@@ -571,9 +597,12 @@
     font-size: 7px;
   }
   .hero-content {
+    top: 0;
+    height: 100%;
     flex-direction: column;
-    gap: clamp(48px, 8svh, 80px);
+    gap: clamp(36px, 6svh, 60px);
     text-align: center;
+    transform: translateX(-50%);
   }
   .hero-brand-mark {
     order: 0;

@@ -146,6 +146,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
         const hero = root.querySelector<HTMLElement>('.hero')!;
         const stage = root.querySelector<HTMLElement>('.hero-stage')!;
         const frame = root.querySelector<HTMLElement>('.hero-visual')!;
+        const title = frame.querySelector<HTMLElement>('.hero-title > span')!;
         const brand = frame.querySelector<HTMLElement>('.hero-brand-mark')!;
         const content = frame.querySelector<HTMLElement>('.hero-content')!;
         const placement = frame.querySelector<HTMLElement>('.hero-reveal-placement')!;
@@ -156,6 +157,18 @@ export function createLandingMotion(root: HTMLElement): () => void {
           stacked() ? stage.offsetWidth * 0.86 : Math.min(stage.offsetWidth * 0.72, 1200);
         const initialBrandWidth = () =>
           stage.offsetWidth * (parseFloat(initialFrame('width')) / 100) * 0.65;
+        const expandedTitleScale = () => {
+          const fontSize = parseFloat(getComputedStyle(title).fontSize);
+          const expandedSize = Math.min(
+            stage.offsetWidth * (stacked() ? 0.075 : 0.065),
+            stage.offsetHeight * 0.1,
+            88
+          );
+          return Math.max(
+            1,
+            Math.min(expandedSize / fontSize, (stage.offsetWidth * 0.86) / title.offsetWidth)
+          );
+        };
 
         // Let Welcome enter over the pinned frame during its final viewport of travel.
         gsap.set('.page-foreground', { marginTop: 'calc(0px - var(--scene-height))' });
@@ -176,8 +189,20 @@ export function createLandingMotion(root: HTMLElement): () => void {
         });
 
         heroTimeline
-          .set(content, { width: contentWidth, justifyContent: 'space-between' }, 0)
-          .to('.hero-title', { opacity: 0, ease: 'none', duration: 0.6 }, 0)
+          .set(
+            content,
+            {
+              width: contentWidth,
+              justifyContent: () => (stacked() ? 'center' : 'space-between')
+            },
+            0
+          )
+          .fromTo(
+            title,
+            { scale: 1 },
+            { scale: expandedTitleScale, ease: 'power1.inOut', duration: 1 },
+            0
+          )
           .fromTo(
             frame,
             {
@@ -436,7 +461,7 @@ export function createLandingMotion(root: HTMLElement): () => void {
           }
         });
 
-        // Keep the image opaque throughout entrance so UZMA cannot show through it.
+        // Keep the hero image opaque throughout entrance.
         gsap.from('.hero-visual', { y: 30, duration: 1.5, ease: 'power3.out' });
         gsap.from('.hero-title > span', { y: 45, opacity: 0, duration: 1.6, ease: 'power3.out' });
         return stopPanelTextMotion;
